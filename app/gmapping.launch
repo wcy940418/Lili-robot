@@ -1,0 +1,51 @@
+<launch>
+  <arg name="scan_topic"  default="scan" />
+  <arg name="base_frame"  default="base_footprint"/>
+  <arg name="odom_frame"  default="odom"/>
+  <arg name="map_frame"  default="map"/>
+
+  <node pkg="gmapping" type="slam_gmapping" name="slam_gmapping" output="screen">
+    <param name="base_frame" value="$(arg base_frame)"/>
+    <param name="odom_frame" value="$(arg odom_frame)"/>
+    <param name="map_update_interval" value="5.0"/> <!--This is the time interval for map update in seconds(default: 5)-->
+    <param name="map_frame" value="$(arg map_frame)"/>
+    <param name="maxUrange" value="4.0"/> <!--This is the max usable range of laser (default: 80) The max range of xv11 may be 6 meters, so 4 me5ers may be a safe range-->
+    <param name="maxRange" value="6.0"/> <!--This is the max range of laser (default: 80) The max range of xv11 may be 6 meters-->
+    <param name="sigma" value="0.05"/>
+    <param name="kernelSize" value="1"/>
+    <param name="lstep" value="0.05"/>
+    <param name="astep" value="0.05"/>
+    <param name="iterations" value="5"/>
+    <param name="lsigma" value="0.075"/>
+    <param name="ogain" value="3.0"/>
+    <param name="lskip" value="0"/>
+    <param name="minimumScore" value="50"/> <!--This is the minimum score for avoiding jumping pose estimates(default: 0) previous:250-->
+    <param name="srr" value="0.01"/>
+    <param name="srt" value="0.02"/>
+    <param name="str" value="0.01"/>
+    <param name="stt" value="0.02"/>
+    <param name="linearUpdate" value="0.5"/> <!--Process a scan each time the robot translates this far(default: 1.0) previous:0.5-->
+    <param name="angularUpdate" value="0.5"/> <!--Process a scan each time the robot rotates this angle(default: 0.5) previous:0.436-->
+    <param name="temporalUpdate" value="-1.0"/> <!--Process a scan if the last scan processed is older than the update time in seconds. A value less than zero will turn time based updates off(default: -1.0)-->
+    <param name="resampleThreshold" value="0.5"/>
+    <param name="particles" value="100"/> <!--Number of particles in the filter (default: 30)-->
+  <!--
+    <param name="xmin" value="-50.0"/>
+    <param name="ymin" value="-50.0"/>
+    <param name="xmax" value="50.0"/>
+    <param name="ymax" value="50.0"/>
+  make the starting size small for the benefit of the Android client's memory...
+  -->
+    <param name="xmin" value="-1.0"/>
+    <param name="ymin" value="-1.0"/>
+    <param name="xmax" value="1.0"/>
+    <param name="ymax" value="1.0"/>
+
+    <param name="delta" value="0.05"/>
+    <param name="llsamplerange" value="0.01"/>
+    <param name="llsamplestep" value="0.01"/>
+    <param name="lasamplerange" value="0.005"/>
+    <param name="lasamplestep" value="0.005"/>
+    <remap from="scan" to="$(arg scan_topic)"/>
+  </node>
+</launch>

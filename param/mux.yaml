@@ -1,0 +1,10 @@
+subscribers:
+  - name:        "Teleoperation"
+    topic:       "input/teleop_cmd_vel"
+    timeout:     1.0
+    priority:    7
+  - name:        "Navigation"
+    topic:       "input/navi_cmd_vel"
+    timeout:     1.0
+    priority:    5
+publisher:    "output/cmd_vel"

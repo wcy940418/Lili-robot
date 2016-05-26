@@ -1,0 +1,70 @@
+<launch>
+  <!--arg name="custom_param_file" default="$(find turtlebot_navigation)/param/dummy.yaml"/-->
+  <node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_lidar">
+    <param name="frame_id" value="laser_scan"/>
+   <param name="firmware_version" value="2"/>
+   <param name="port" value="/dev/ttyUSB0"/>
+  </node>
+
+  <!--node pkg="teleop_twist_joy" type="teleop_node" name="teleop_joy">
+    <param name="enable_turbo_button" value="1"/>
+    <param name="scale_linear_turbo" value="0.5"/>
+    <param name="scale_linear" value="0.3"/>
+    <param name="scale_angular" value="2.0"/>
+    <remap from="cmd_vel" to="teleop_cmd_vel"/>
+  </node>
+
+  <node pkg="joy" type="joy_node" name="ms_joy1">
+    <param name="dev" value="/dev/input/js1"/>
+  </node-->
+
+  <node pkg="tf" type="static_transform_publisher" name="base_mask_tf" args="0 0 0 0 0 0 base_footprint base_link 100" />
+
+  <node pkg="tf" type="static_transform_publisher" name="base_to_laser_tf" args="0 0 0 0 0 0 base_link laser_scan 100" />
+
+  <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+    <param name="output_frame" value="odom"/>
+    <param name="freq" value="30.0"/>
+    <param name="sensor_timeout" value="1.0"/>
+    <param name="odom_used" value="true"/>
+    <param name="imu_used" value="false"/>
+    <param name="vo_used" value="false"/>
+    <param name="debug" value="false"/>
+    <param name="self_diagnose" value="false"/>
+  </node>
+
+  <!-- Map server -->
+  <arg name="map_file" default="$(env LILI_NAVI_MAPFILE)"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+
+  <arg name="initial_pose_x" default="0.0"/> <!-- Use 17.0 for willow's map in simulation -->
+  <arg name="initial_pose_y" default="0.0"/> <!-- Use 17.0 for willow's map in simulation -->
+  <arg name="initial_pose_a" default="0.0"/>
+  <include file="$(find lili_navi)/amcl.launch.xml">
+    <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+  </include>
+
+  <include file="$(find lili_navi)/robot.launch">
+      <arg name="serialport" value="/dev/ttyUSB1"/>
+  </include>
+
+  <include file="$(find lili_navi)/move_base.launch.xml">
+    <!--arg name="custom_param_file" value="$(arg custom_param_file)"/-->
+  </include>
+
+  <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
+  <node pkg="nodelet" type="nodelet" name="cmd_vel_mux" args="standalone yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
+    <param name="yaml_cfg_file" value="$(find lili_navi)/param/mux.yaml"/>
+    <remap from="/cmd_vel_mux/input/teleop_cmd_vel" to="teleop_cmd_vel"/>
+    <remap from="/cmd_vel_mux/input/navi_cmd_vel" to="navi_cmd_vel"/>
+    <remap from="/cmd_vel_mux/output/cmd_vel" to="cmd_vel"/>
+  </node>
+
+  <!--node pkg="yocs_cmd_vel_mux" type="cmd_vel_mux" name="velo_mux">
+    <param name="yaml_cfg_file" value="$(find lili_navi)/param/mux.yaml"/>
+  </node-->
+
+</launch>
+

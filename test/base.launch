@@ -1,0 +1,14 @@
+<launch>
+  <!--arg name="custom_param_file" default="$(find turtlebot_navigation)/param/dummy.yaml"/-->
+  <node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_lidar">
+    <param name="frame_id" value="laser_scan"/>
+   <param name="firmware_version" value="2"/>
+   <param name="port" value="/dev/ttyUSB0"/>
+  </node>
+
+  <include file="$(find lili_navi)/robot.launch">
+      <arg name="serialport" value="/dev/ttyUSB1"/>
+  </include>
+  
+</launch>
+

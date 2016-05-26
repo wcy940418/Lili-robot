@@ -1,0 +1,43 @@
+<launch>
+
+  <node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_lidar">
+  	<param name="frame_id" value="laser_scan"/>
+   <param name="firmware_version" value="2"/>
+   <param name="port" value="/dev/ttyUSB0"/>
+  </node>
+
+  <include file="$(find lili_navi)/gmapping.launch"/>
+
+  <include file="$(find lili_navi)/robot.launch">
+  		<arg name="serialport" value="/dev/ttyUSB1"/>
+  </include>
+
+  <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 base_footprint laser_scan 100" />
+
+  <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_joy">
+  	<param name="enable_turbo_button" value="1"/>
+  	<param name="scale_linear_turbo" value="0.5"/>
+  	<param name="scale_linear" value="0.3"/>
+  	<param name="scale_angular" value="2.0"/>
+  </node>
+
+  <node pkg="joy" type="joy_node" name="ms_joy1">
+  	<param name="dev" value="/dev/input/js1"/>
+  </node>
+
+  <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
+    <param name="output_frame" value="odom"/>
+    <param name="freq" value="30.0"/>
+    <param name="sensor_timeout" value="1.0"/>
+    <param name="odom_used" value="true"/>
+    <param name="imu_used" value="false"/>
+    <param name="vo_used" value="false"/>
+    <param name="debug" value="false"/>
+    <param name="self_diagnose" value="false"/>
+  </node>
+
+  <!--node pkg="turtlesim" type="turtlesim_node" name="sim1">
+  	<remap from="turtle1/cmd_vel" to="cmd_vel"/>
+  </node-->
+
+</launch>
