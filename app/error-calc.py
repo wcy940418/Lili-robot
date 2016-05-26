@@ -14,23 +14,39 @@ def plan_callback(msg, arr):
 
     Parameters:
     msg {Path} The heard message
-    arr {np.array} Array to store pose information
+    arr {np.array} Array to store pose data
     """
 
-def pose_callback(msg, arr):
+def pose_callback(msg, arr, uncert):
     """Records the poses given by amcl in a np.array
 
     Parameters:
     msg {PWCS} The heard message
-    arr {np.array} Array to store pose information
+    arr {np.array} Array to store pose data
+    uncert {np.array} Array to store uncertainty data
     """
-    # TODO: Deal with covariance data
+    # TODO: Deal with uncertainty data
 
 def main():
     rp.init_node("listener", anonymous=True)
 
-    path_planned = np.array()
-    path_actual = np.array()
+    shape = [1,3] # TODO: quaternions?
+    path_planned = np.array(shape)
+    path_actual = np.array(shape)
+    path_uncert = np.array(shape)
 
-    rp.Subscriber("/global_planner/plan", Path, plan_callback, path_planned)
-    rp.Subscriber("/amcl/amcl_pose", PWCS, pose_callback, path_actual)
+    rp.Subscriber("/global_planner/plan",
+                  data_class=Path,
+                  callback=plan_callback,
+                  callback_args=path_planned)
+    rp.Subscriber("/amcl/amcl_pose",
+                  data_class=PWCS,
+                  callback=pose_callback,
+                  callback_args=(path_actual, path_uncert))
+
+    rp.spin()
+
+    # what to do with data after node is stopped?
+
+if __name__ == "__main__":
+    main()
