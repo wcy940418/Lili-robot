@@ -20,7 +20,7 @@ AMCL_CMD = 'roslaunch lili_navi amcl.launch map_file:='
 
 class Config:
 	# self.service_lock = False
-	self.curr_process = None # one of None, 'slam', or 'amcl'
+	# self.curr_process = None # one of None, 'slam', or 'amcl'
 	self.map_mgr = MapManager()
 	self.pose_svr = PoseServer()
 	self.map = None
@@ -31,62 +31,67 @@ class Config:
 
 def start_slam(cfg):
 	"""Start SLAM
+
+	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
 		stop_amcl(cfg)
 
 	# will this ever fail?
-	slam_process = subprocess.Popen(SLAM_CMD,
-									stdout=subprocess.PIPE,
-									shell=True,
-									preexec_fn=os.setsid)
+	cfg.slam_process = subprocess.Popen(SLAM_CMD,
+										stdout=subprocess.PIPE,
+										shell=True,
+										preexec_fn=os.setsid)
 	print "SLAM started"
-	cfg.curr_process = "slam"
+	# cfg.curr_process = "slam"
+	return True
 
-	# global service_lock
-	# global now_service
-	# global slam_process
-	# global amcl_process
-	# global pose1
-	# global map1
-	# if service_lock:
-	# 	try: # reset
-	# 		os.killpg(os.getpgid(amcl_process.pid), signal.SIGTERM) # assume amcl_process is running
-	# 		service_lock = False
-	# 		now_service = 'No'
-	# 	except: # exception raised when amcl_process isn't running
-	# 		raise LILINAVIServerError("Service abnormal, please restart server")
-	# try:
-	# 	slam_process = subprocess.Popen(SLAM_CMD, stdout = subprocess.PIPE, shell = True, preexec_fn = os.setsid)
-	# 	print "Mapping started"
-	# 	service_lock = True
-	# 	now_service = 'SLAM'
-	# except:
-	# 	raise LILINAVIServerError("Service abnormal, please restart server")
+def stop_slam(cfg):
+	"""Stop SLAM
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.slam_process:
+		os.killpg(os.getpgid(cfg.slam_process.pid), signal.SIGTERM)
+		cfg.slam_process = None
+		print "SLAM stopped"
+		return True
+
+	print "SLAM not running; cannot stop"
+	return False
+
+def save_map(cfg):
+	"""Save the map created by SLAM
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.slam_process:
+		subprocess.call(MAP_SAVER_CMD + cfg.map, shell=True)
+		cfg.map_mgr.buildmaplib()
+		print "Map %s saved" % cfg.map
+		return True
+	else:
+		print "SLAM isn't currently running. Please start SLAM first"
+		return False
 
 def request_process(cfg, req):
 	"""Given a request `req` execute the corresponding function
+
+	Returns: {bool} True if request is successful, False otherwise
 	"""
-	# global loaded_map
-	# global service_lock
-	# global now_service
-	# global pose1
-	# global map1
+	is_successful = False
 	if request['cmd'] == 'start_slam':
-		start_slam(cfg)
-		cfg.map = cfg.map_mgr.buildnewmap(request['data']) + '.txt'
-		cfg.pose_svr.create(cfg.map)
-		cfg.pose_svr.load(cfg.map)
+		is_successful = start_slam(cfg)
+		if not is_successful:
+			return False
+		cfg.map = cfg.map_mgr.buildnewmap(request['data'])
+		cfg.pose_svr.create(cfg.map + '.txt')
+		cfg.pose_svr.load(cfg.map + '.txt')
 		#time.sleep(5)
 		#record_pose('home')
 	elif request['cmd'] == 'stop_slam':
-		try:
-			if not request['data'] == '':
-				save_map(request['data'])
-			stop_slam()
-			loaded_map = ''
-		except:
-			return False
+		if request['data']:
+			is_successful = save_map(cfg) and stop_slam(cfg)
 	elif request['cmd'] == 'start_amcl':
 		try:
 			start_amcl(request['data'])
@@ -113,7 +118,7 @@ def request_process(cfg, req):
 		set_initial_pose(request['data'])
 	elif request['cmd'] == 'initial_pose_raw':
 		set_initial_pose_raw(request['data'])
-	return True
+	return is_successful
 
 def init_request_socket():
 	"""Create and return a socket object at a fixed IP
@@ -151,22 +156,6 @@ global loaded_map
 
 class LILINAVIServerError(StandardError):
 	pass
-
-def stop_slam():
-	global service_lock
-	global now_service
-	global slam_process
-	global loaded_map
-	global pose1
-	global map1
-	if service_lock and now_service=='SLAM':
-		try:
-			os.killpg(os.getpgid(slam_process.pid), signal.SIGTERM)
-			service_lock = False
-			now_service = 'No'
-			print "Mapping stopped"
-		except: # exception thrown when slam_process isn't running
-			raise LILINAVIServerError("Service abnormal, please restart server")
 
 def start_amcl(name): # `name` is the name of the map (w/o filename suffix)
 	global service_lock
@@ -208,16 +197,6 @@ def stop_amcl():
 			print "Navigation stopped"
 		except:
 			raise LILINAVIServerError("Service abnormal, please restart server")
-
-def save_map(name):
-	global service_lock
-	global now_service
-	global pose1
-	global map1
-	if service_lock and now_service == 'SLAM':
-		subprocess.call(MAP_SAVER_CMD+map1.buildnewmap(name), shell = True)
-		map1.buildmaplib()
-		print "Map " + name +"saved"
 
 def set_goal_raw(data):
 	global service_lock
