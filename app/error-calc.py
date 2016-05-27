@@ -6,6 +6,7 @@ Listens for global_planner plan and amcl position
 import numpy as np
 import rospy as rp
 
+from scipy import interpolate
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped as PWCS
 
@@ -43,12 +44,25 @@ def error_calc(plan, actual, uncert):
     plan {np.array} The planned path
     actual {np.array} The actual path
     uncert {np.array} The uncertainty in path
+
+    Returns: {float64} The mean squared error
     """
-    
+    # TODO: how to handle uncertainty?
+    xs = plan[:, 0]
+    ys = plan[:, 1]
+    f = interpolate.interp1d(xs, ys)
+
+    sse = np.float64(0)
+    for x, y in actual:
+        sq_err = (f(x) - y) ** 2
+        sse += sq_err
+
+    return sse / actual.shape[1]
+
+
 def main():
     rp.init_node("listener", anonymous=True)
 
-    shape = (1,3) # TODO: quaternions?
     paths_planned = []
     path_actual = []
     path_uncert = []
@@ -68,3 +82,6 @@ def main():
     path_actual = np.array(path_actual)
     path_uncert = np.array(path_uncert)
     error_calc(path_planned, path_actual, path_uncert)
+
+if __name__ == "__main__":
+    main()
