@@ -13,6 +13,10 @@
         <param name="firmware_version" value="2"/>
         <param name="port" value="$(arg lidar_port)"/>
     </node>
+    <!--Fake LIDAR Node: for clearing-->
+    <node pkg="lili_navi" type="fake_laser.py" name="clearing_lidar">
+        <param name="distance" value="10.0"/>
+    </node>
     <!--Tele pose Node-->
     <node pkg="lili_navi" type="tele_pos.py" name="tele_pos" respawn="true"/>
     <!--Teleop Node-->
@@ -29,8 +33,10 @@
     </node>
     <!--Footprint Mask tf-->
     <node pkg="tf" type="static_transform_publisher" name="base_mask_tf" args="0 0 0 0 0 0 base_footprint base_link 100" />
-    <!--LIDAR static tf-->
+    <!--XV-11 LIDAR static tf-->
     <node pkg="tf" type="static_transform_publisher" name="base_to_laser_tf" args="0 0 0 0 0 0 base_link laser_scan 100" />
+    <!--Fake LIDAR static tf-->
+    <node pkg="tf" type="static_transform_publisher" name="base_to_fake_laser_tf" args="0 0 0 0 0 0 base_link fake_scan 100" />
     <!--robot_pose_ekf Node-->
     <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
         <param name="output_frame" value="odom"/>
@@ -53,7 +59,7 @@
     <!--Create Robot Node-->
     <include file="$(find lili_navi)/app/robot.launch">
         <arg name="serialport" value="$(arg robot_port)"/>
-        <arg name="robot_type" value="roomba"/>
+        <arg name="robot_type" value="create"/>
     <!--move_base Node-->
     </include>
         <include file="$(find lili_navi)/app/move_base.launch.xml">
