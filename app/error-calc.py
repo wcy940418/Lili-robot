@@ -10,30 +10,34 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped as PWCS
 
 def plan_callback(msg, arr):
-    """Records most recent plan created by global_planner in a np.array
+    """Records most recent plan created by global_planner in a list
 
     Parameters:
     msg {Path} The heard message
-    arr {np.array} Array to store pose data
+    arr {list} List to store pose data
     """
 
 def pose_callback(msg, arr, uncert):
-    """Records the poses given by amcl in a np.array
+    """Records the poses given by amcl in a list
 
     Parameters:
     msg {PWCS} The heard message
-    arr {np.array} Array to store pose data
+    arr {list} List to store pose data
     uncert {np.array} Array to store uncertainty data
     """
     # TODO: Deal with uncertainty data
+    x = msg.pose.position.x
+    y = msg.pose.position.y
+    # z = msg.pose.position.z
+    arr.append([x, y]) # assume on 2D plane
 
 def main():
     rp.init_node("listener", anonymous=True)
 
-    shape = [1,3] # TODO: quaternions?
-    path_planned = np.array(shape)
-    path_actual = np.array(shape)
-    path_uncert = np.array(shape)
+    shape = (1,3) # TODO: quaternions?
+    path_planned = []
+    path_actual = []
+    path_uncert = []
 
     rp.Subscriber("/global_planner/plan",
                   data_class=Path,
@@ -46,7 +50,6 @@ def main():
 
     rp.spin()
 
-    # what to do with data after node is stopped?
-
-if __name__ == "__main__":
-    main()
+    path_planned = np.array(path_planned)
+    path_actual = np.array(path_actual)
+    path_uncert = np.array(path_uncert)
