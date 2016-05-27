@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
-from poseserver import *
-from mapmanager import *
-from qrtransform import *
 import socket
 import os
 import signal
 import subprocess
 import time
 import json
+
+from poseserver import PoseError, PoseServer
+from mapmanager import MapError, MapManager
+from qrtransform import quaternion2rpy, rpy2quaternion
 
 HOST = 'localhost'
 POSE_SERVICE_PORT = 5555
@@ -17,9 +18,11 @@ SLAM_CMD = 'roslaunch lili_navi slam.launch'
 MAP_SAVER_CMD = 'rosrun map_server map_saver -f '
 AMCL_CMD = 'roslaunch lili_navi amcl.launch map_file:='
 
-global service_lock
+
+# can't these be encapsulted in a class?
+global service_lock # keep track of whether process was successfully started?
 service_lock = False
-global now_service
+global now_service # keep track of current service
 now_service = 'No'
 global map1
 map1 = MapManager()
@@ -38,11 +41,11 @@ def start_slam():
 	global pose1
 	global map1
 	if service_lock:
-		try: 
-			os.killpg(os.getpgid(amcl_process.pid), signal.SIGTERM)
+		try: # reset
+			os.killpg(os.getpgid(amcl_process.pid), signal.SIGTERM) # assume amcl_process is running
 			service_lock = False
 			now_service = 'No'
-		except:
+		except: # exception raised when amcl_process isn't running
 			raise LILINAVIServerError("Service abnormal, please restart server")
 	try:
 		slam_process = subprocess.Popen(SLAM_CMD, stdout = subprocess.PIPE, shell = True, preexec_fn = os.setsid)
@@ -60,15 +63,15 @@ def stop_slam():
 	global pose1
 	global map1
 	if service_lock and now_service=='SLAM':
-		try: 
+		try:
 			os.killpg(os.getpgid(slam_process.pid), signal.SIGTERM)
 			service_lock = False
 			now_service = 'No'
 			print "Mapping stopped"
-		except:
+		except: # exception thrown when slam_process isn't running
 			raise LILINAVIServerError("Service abnormal, please restart server")
 
-def start_amcl(name):
+def start_amcl(name): # `name` is the name of the map (w/o filename suffix)
 	global service_lock
 	global now_service
 	global slam_process
@@ -76,7 +79,7 @@ def start_amcl(name):
 	global pose1
 	global map1
 	if service_lock and now_service=='AMCL':
-		try: 
+		try:
 			os.killpg(os.getpgid(slam_process.pid), signal.SIGTERM)
 			service_lock = False
 			now_service = 'No'
@@ -100,7 +103,7 @@ def stop_amcl():
 	global pose1
 	global map1
 	if service_lock and now_service=='AMCL':
-		try: 
+		try:
 			os.killpg(os.getpgid(amcl_process.pid), signal.SIGTERM)
 			loaded_map = ''
 			service_lock = False
@@ -131,16 +134,16 @@ def set_goal_raw(data):
 		str = json.dumps(data)
 		sock.sendall(str)
 		sock.close()
-	else:
+	else: # doesn't start_slam set service_lock = True?
 		print "Need to start an AMCL service first"
-	
+
 def set_goal(name):
 	global service_lock
 	global now_service
 	global pose1
 	global map1
 	if service_lock :
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # protocol, socket type
 		sock.connect((HOST,POSE_SERVICE_PORT))
 		try:
 			dic = pose1.findall(name)
@@ -148,11 +151,11 @@ def set_goal(name):
 			str = json.dumps(dic)
 			sock.sendall(str)
 			print "LILI will go to " + name
-		except:
+		except: # first line in `try`
 			print "Do not have this pose"
-		
+
 		sock.close()
-	else:
+	else: # see comment for set_goal_raw
 		print "Need to start an AMCL service first"
 
 def move(data):
@@ -169,8 +172,8 @@ def move(data):
 			dic['z'] = 0.0
 			dic['yaw'] = data['yaw']
 			dic['name'] = 'goal_robot'
-			str = json.dumps(dic)
-		except:
+			str = json.dumps(dic) # str is a keyword in python
+		except: # what error will be thrown?
 			print "Invalid position"
 		sock.sendall(str)
 		sock.close()
@@ -202,7 +205,7 @@ def set_initial_pose(data):
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock.connect((HOST,POSE_SERVICE_PORT))
 		try:
-			dic = pose1.findall(name)
+			dic = pose1.findall(name) # name not defined?
 			dic['name'] = 'initial'
 			str = json.dumps(pose1.findall(name))
 		except:
@@ -331,7 +334,7 @@ def init_request_socket():
 def service():
 	global s
 	init_request_socket()
-	while True:
+	while True: # ???
 		conn, addr = s.accept()
 		print 'Connected by:', addr
 		while True:
@@ -348,5 +351,3 @@ def service():
 		print 'Disconnected'
 if __name__ == '__main__':
 	service()
-
-		 
