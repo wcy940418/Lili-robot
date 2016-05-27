@@ -18,7 +18,33 @@ SLAM_CMD = 'roslaunch lili_navi slam.launch'
 MAP_SAVER_CMD = 'rosrun map_server map_saver -f '
 AMCL_CMD = 'roslaunch lili_navi amcl.launch map_file:='
 
+class Config:
+	self.service_lock = False
+	self.now_service = 'No'
+	self.map_mgr = MapManager()
+	self.pose_svr = PoseServer()
+	self.map = None
 
+def init_request_socket():
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.bind(('192.168.3.3', MAIN_SERVER_PORT))
+	s.listen(1)
+	return s
+
+def main():
+	c = Config()
+	s = init_request_socket()
+	while True:
+		with s.accept() as conn, addr:
+			print 'Connected by:', addr
+			data = conn.recv(1024)
+			while data:
+				req = json.loads(data)
+				request_process(req)
+				data = conn.recv(1024)
+			print "Client closed connection"
+
+"""
 # can't these be encapsulted in a class?
 global service_lock # keep track of whether process was successfully started?
 service_lock = False
@@ -29,6 +55,7 @@ map1 = MapManager()
 global pose1
 pose1 = PoseServer()
 global loaded_map
+"""
 
 class LILINAVIServerError(StandardError):
 	pass
@@ -325,29 +352,5 @@ def request_process(request):
 		set_initial_pose_raw(request['data'])
 	return True
 
-def init_request_socket():
-	global s
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.bind(('192.168.3.3', MAIN_SERVER_PORT))
-	s.listen(1)
-
-def service():
-	global s
-	init_request_socket()
-	while True: # ???
-		conn, addr = s.accept()
-		print 'Connected by:', addr
-		while True:
-			data = conn.recv(1024)
-			if data:
-				d = json.loads(data)
-				flag = request_process(d)
-				if not flag:
-					print "Opreation failure"
-			else: 		#if client closes connection, conn.recv() will return a null value
-				print "Client has been killed"
-				break
-		conn.close()
-		print 'Disconnected'
 if __name__ == '__main__':
-	service()
+	main()
