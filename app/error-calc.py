@@ -1,7 +1,8 @@
-"""
-Error calculation node
-Listens for global_planner plan and amcl position
-"""
+#!/usr/bin/env python
+
+# Error calculation node
+# Listens for global_planner plan and amcl position
+
 
 import numpy as np
 import rospy as rp
