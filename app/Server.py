@@ -180,7 +180,7 @@ def request_process(cfg, request):
 	elif request['cmd'] == 'move':
 		move(cfg, request['data'])
 	elif request['cmd'] == 'set_goal_raw':
-		set_goal_raw(request['data'])
+		set_goal_raw(cfg, request['data'])
 	elif request['cmd'] == 'set_goal':
 		set_goal(request['data'])
 	elif request['cmd'] == 'stop_navi':
@@ -232,20 +232,21 @@ global loaded_map
 class LILINAVIServerError(StandardError):
 	pass
 
-def set_goal_raw(data):
-	global service_lock
-	global now_service
-	global pose1
-	global map1
-	if service_lock :
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.connect((HOST,POSE_SERVICE_PORT))
-		data['name'] = 'goal'
-		str = json.dumps(data)
-		sock.sendall(str)
-		sock.close()
-	else: # doesn't start_slam set service_lock = True?
-		print "Need to start an AMCL service first"
+def set_goal_raw(cfg, data):
+	"""Given goal pose data `data`, send it to the pose service
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT)) # TODO: can this fail?
+			data['name'] = 'goal'
+			pose = json.dumps(data)
+			s.sendall(pose)
+		return True
+
+	print "Please start navigation (AMCL) first"
+	return False
 
 def set_goal(name):
 	global service_lock
