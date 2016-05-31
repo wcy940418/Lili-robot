@@ -31,10 +31,10 @@ class Config:
 	slam_process = None
 
 class LiliSocket(socket.socket):
-	def __enter__:
+	def __enter__(self):
 		return self
 
-	def __exit__:
+	def __exit__(self, exception_type, exception_value, traceback):
 		self.close()
 
 def start_slam(cfg):
