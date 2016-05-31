@@ -22,13 +22,13 @@ BUFFER_SIZE = 1024
 class Config:
 	# self.service_lock = False
 	# self.curr_process = None # one of None, 'slam', or 'amcl'
-	self.map_mgr = MapManager()
-	self.pose_svr = PoseServer()
-	self.map_name = None
+	map_mgr = MapManager()
+	pose_svr = PoseServer()
+	map_name = None
 
 	# at least one of these should be None at all times
-	self.amcl_process = None
-	self.slam_process = None
+	amcl_process = None
+	slam_process = None
 
 def start_slam(cfg):
 	"""Start SLAM
@@ -343,7 +343,7 @@ def main():
 	cfg = Config()
 	s = init_request_socket()
 	while True:
-		with s.accept() as conn, addr:
+		with s.accept() as (conn, addr):
 			print 'Connected by:', addr
 			data = conn.recv(BUFFER_SIZE)
 			while data:
