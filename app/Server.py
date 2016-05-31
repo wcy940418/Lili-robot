@@ -284,7 +284,7 @@ def record_pose(cfg, name):
 	if cfg.slam_process or cfg.amcl_process:
 		pose = json.dumps(read_recent_pose(cfg))
 		cfg.pose_svr.append(name, pose)
-		print "Recorded pose:", pose
+		print "Recorded pose:"
 		for k, v in pose.iteritems():
 			print "%3s: %.4f" % (k, v)
 		return True
