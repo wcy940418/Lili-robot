@@ -7,8 +7,8 @@ import subprocess
 import time
 import json
 
-from poseserver import PoseError, PoseServer
-from mapmanager import MapError, MapManager
+from poseserver import PoseServer
+from mapmanager import MapManager
 from qrtransform import quaternion2rpy, rpy2quaternion
 
 HOST = 'localhost'
@@ -87,7 +87,7 @@ def start_amcl(cfg):
 		stop_slam(cfg)
 
 	if cfg.amcl_process:
-		print "Navigation already running"
+		print "Navigation (AMCL) already running"
 		return False
 
 	# TODO: handle exceptions?
@@ -98,7 +98,7 @@ def start_amcl(cfg):
 		preexec_fn=os.setsid)
 
 	cfg.pose_svr.load(cfg.map_mgr.getmappath(cfg.map) + '.txt')
-	print "Navigation started"
+	print "Navigation (AMCL) started"
 	return True
 
 def stop_amcl(cfg):
@@ -110,11 +110,31 @@ def stop_amcl(cfg):
 		os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
 		cfg.amcl_process = None
 		cfg.map = None
-		print "Navigation stopped"
+		print "Navigation (AMCL) stopped"
 		return True
 
-	print "Navigation not running; cannot stop"
+	print "Navigation (AMCL) not running; cannot stop"
 	return False
+
+def move(cfg, data):
+	"""Given coordinate data `data`, send a move command to these coordinates
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT))
+			goal = {}
+			goal['x'] = data['x']
+			goal['y'] = data['y']
+			goal['z'] = 0.
+			goal['yaw'] = data['yaw']
+			goal['name'] = 'goal_robot' # ???
+			s.sendall(json.dumps(goal))
+		return True
+	else:
+		print "Please start AMCL first"
+		return False
 
 def request_process(cfg, req):
 	"""Given a request `req` execute the corresponding function
@@ -135,17 +155,11 @@ def request_process(cfg, req):
 		if request['data']:
 			is_successful = save_map(cfg) and stop_slam(cfg)
 	elif request['cmd'] == 'start_amcl':
-		try:
-			start_amcl(request['data'])
-		except:
-			return False
+		is_successful = start_amcl(cfg)
 	elif request['cmd'] == 'stop_amcl':
-		try:
-			stop_amcl()
-		except:
-			return False
+		is_successful = stop_amcl(cfg)
 	elif request['cmd'] == 'move':
-		move(request['data'])
+		is_successful = move(cfg, request['data'])
 	elif request['cmd'] == 'set_goal_raw':
 		set_goal_raw(request['data'])
 	elif request['cmd'] == 'set_goal':
@@ -233,28 +247,6 @@ def set_goal(name):
 
 		sock.close()
 	else: # see comment for set_goal_raw
-		print "Need to start an AMCL service first"
-
-def move(data):
-	global service_lock
-	global now_service
-	global map1
-	dic = {}
-	if service_lock :
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.connect((HOST,POSE_SERVICE_PORT))
-		try:
-			dic['x'] = data['x']
-			dic['y'] = data['y']
-			dic['z'] = 0.0
-			dic['yaw'] = data['yaw']
-			dic['name'] = 'goal_robot'
-			str = json.dumps(dic) # str is a keyword in python
-		except: # what error will be thrown?
-			print "Invalid position"
-		sock.sendall(str)
-		sock.close()
-	else:
 		print "Need to start an AMCL service first"
 
 def stop_navi():
