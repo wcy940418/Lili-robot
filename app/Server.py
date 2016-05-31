@@ -190,9 +190,9 @@ def request_process(cfg, request):
 	elif request['cmd'] == 'record_pose':
 		record_pose(request['data'])
 	elif request['cmd'] == 'initial_pose':
-		set_initial_pose(request['data'])
+		set_initial_pose(cfg, request['data'])
 	elif request['cmd'] == 'initial_pose_raw':
-		set_initial_pose_raw(request['data'])
+		set_initial_pose_raw(cfg, request['data'])
 	return is_successful
 
 def init_request_socket():
@@ -285,8 +285,8 @@ def stop_navi(cfg):
 	return False
 
 def set_initial_pose(cfg, name):
-	"""Given a known location string `name`, send the corresponding coordinate
-	data to the pose service
+	"""Given a known location string `name` in the loaded map, send the
+	corresponding coordinate data to the pose service
 
 	Returns: {bool} True if successful, False otherwise
 	"""
@@ -304,20 +304,20 @@ def set_initial_pose(cfg, name):
 	print "Cannot set initial pose; navigation (AMCL) not running"
 	return False
 
-def set_initial_pose_raw(data):
-	global service_lock
-	global now_service
-	global pose1
-	global map1
-	if service_lock and now_service == 'AMCL':
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.connect((HOST,POSE_SERVICE_PORT))
-		data['name'] = 'initial'
-		str = json.dumps(data)
-		sock.sendall(str)
-		sock.close()
-	else:
-		print "Need to start an AMCL service first"
+def set_initial_pose_raw(cfg, data):
+	"""Given raw coordinate data `data`, send it to the pose service
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT))
+			data['name'] = 'initial'
+			s.sendall(json.dumps(data))
+			return True
+
+	print "Cannot set raw initial pose; navigation (AMCL) not running"
+	return False
 
 def read_recent_pose():
 	global service_lock
