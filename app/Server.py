@@ -30,6 +30,13 @@ class Config:
 	amcl_process = None
 	slam_process = None
 
+class LiliSocket(socket.socket):
+	def __enter__:
+		return self.accept()
+
+	def __exit__:
+		self.close()
+
 def start_slam(cfg):
 	"""Start SLAM
 
@@ -142,7 +149,7 @@ def move(cfg, data):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+		with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
 			s.connect((HOST, POSE_SERVICE_PORT))
 			goal = {}
 			goal['x'] = data['x']
@@ -162,7 +169,7 @@ def set_goal_raw(cfg, data):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+		with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
 			s.connect((HOST, POSE_SERVICE_PORT)) # TODO: can this fail?
 			data['name'] = 'goal'
 			pose = json.dumps(data)
@@ -179,7 +186,7 @@ def set_goal(cfg, name):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+		with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
 			s.connect((HOST, POSE_SERVICE_PORT)) # TODO: see set_goal_raw
 			try:
 				coords = cfg.pose_svr.findall(name)
@@ -200,7 +207,7 @@ def stop_navi(cfg):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+		with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
 			s.connect((HOST, POSE_SERVICE_PORT))
 			s.sendall( json.dumps({'name':'cancel'}) )
 		return True
@@ -214,7 +221,7 @@ def set_initial_pose_raw(cfg, data):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+		with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
 			s.connect((HOST, POSE_SERVICE_PORT))
 			data['name'] = 'initial'
 			s.sendall(json.dumps(data))
@@ -230,7 +237,7 @@ def set_initial_pose(cfg, name):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+		with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
 			s.connect((HOST, POSE_SERVICE_PORT))
 			try:
 				coords = cfg.pose_svr.findall(name)
@@ -249,7 +256,7 @@ def read_recent_pose(cfg):
 	Returns: {dict} Pose data if successful, empty dictionary otherwise
 	"""
 	if cfg.slam_process or cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+		with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
 			s.connect((HOST, POSE_SERVICE_PORT))
 			s.sendall( json.dumps({'name':'get_pose'}) )
 			data = s.recv(BUFFER_SIZE)
@@ -334,7 +341,7 @@ def request_process(cfg, request):
 def init_request_socket():
 	"""Create and return a socket object at a fixed IP
 	"""
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s = LiliSocket(socket.AF_INET, socket.SOCK_STREAM)
 	s.bind(('192.168.3.3', MAIN_SERVER_PORT))
 	s.listen(1)
 	return s
