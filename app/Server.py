@@ -35,6 +35,7 @@ class LiliSocket(socket.socket):
 		return self
 
 	def __exit__(self, exception_type, exception_value, traceback):
+		self.shutdown()
 		self.close()
 
 def start_slam(cfg):
