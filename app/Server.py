@@ -37,6 +37,10 @@ def start_slam(cfg):
 	if cfg.amcl_process:
 		stop_amcl(cfg)
 
+	if cfg.slam_process:
+		print "SLAM already running"
+		return False
+
 	# will this ever fail?
 	cfg.slam_process = subprocess.Popen(SLAM_CMD,
 										stdout=subprocess.PIPE,
@@ -77,10 +81,14 @@ def save_map(cfg):
 def start_amcl(cfg):
 	"""Start AMCL navigation
 
-	Returns:
+	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.slam_process:
 		stop_slam(cfg)
+
+	if cfg.amcl_process:
+		print "Navigation already running"
+		return False
 
 	# TODO: handle exceptions?
 	cfg.amcl_process = subprocess.Popen(
@@ -91,8 +99,13 @@ def start_amcl(cfg):
 
 	cfg.pose_svr.load(cfg.map_mgr.getmappath(cfg.map) + '.txt')
 	print "Navigation started"
+	return True
 
 def stop_amcl(cfg):
+	"""Stop AMCL navigation
+
+	Returns {bool} True if successful, False otherwise
+	"""
 	if cfg.amcl_process:
 		os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
 		cfg.amcl_process = None
