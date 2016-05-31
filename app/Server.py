@@ -184,7 +184,7 @@ def request_process(cfg, request):
 	elif request['cmd'] == 'set_goal':
 		set_goal(cfg, request['data'])
 	elif request['cmd'] == 'stop_navi':
-		stop_navi()
+		stop_navi(cfg)
 	elif request['cmd'] == 'get_pose':
 		return read_recent_pose()
 	elif request['cmd'] == 'record_pose':
@@ -245,7 +245,7 @@ def set_goal_raw(cfg, data):
 			s.sendall(pose)
 		return True
 
-	print "Please start navigation (AMCL) first"
+	print "Cannot set raw goal; navigation (AMCL) not running"
 	return False
 
 def set_goal(cfg, name):
@@ -267,24 +267,22 @@ def set_goal(cfg, name):
 			print "Going to %s" % name
 			return True
 
-	print "Please start navigation (AMCL) first"
+	print "Cannot set goal; navigation (AMCL) not running"
 	return False
 
-def stop_navi():
-	global service_lock
-	global now_service
-	global pose1
-	global map1
-	dic = {}
-	if service_lock and now_service == 'AMCL':
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.connect((HOST,POSE_SERVICE_PORT))
-		dic['name'] = 'cancel'
-		str = json.dumps(dic)
-		sock.sendall(str)
-		sock.close()
-	else:
-		print "Need to start an AMCL service first"
+def stop_navi(cfg):
+	"""Send the stop command to the pose service
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT))
+			s.sendall( json.dumps({'name':'cancel'}) )
+		return True
+
+	print "Cannot stop navigation; navigation not running"
+	return False
 
 def set_initial_pose(data):
 	global service_lock
