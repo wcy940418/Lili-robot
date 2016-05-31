@@ -345,18 +345,22 @@ def read_recent_pose(cfg):
 	print "Cannot get recent pose; neither AMCL nor SLAM is running"
 	return {}
 
-def record_pose(name):
-	global service_lock
-	global pose1
-	global map1
-	if service_lock:
-		pose = read_recent_pose()
-		print pose
-		pose1.append(name,pose)
-	else:
-		print "No service running, please start AMCL or SLAM first"
+def record_pose(cfg, name):
+	"""Adds a pose with name `name` to the list of known poses in the pose
+	server
 
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.slam_process or cfg.amcl_process:
+		pose = json.dumps(read_recent_pose(cfg))
+		cfg.pose_svr.append(name, pose)
+		print "Recorded pose:", pose
+		for k, v in pose.iteritems():
+			print "%3s: %.4f" % (k, v)
+		return True
 
+	print "Cannot record pose; neither SLAM nor AMCL is running"
+	return False
 
 if __name__ == '__main__':
 	main()
