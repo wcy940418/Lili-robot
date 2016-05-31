@@ -23,7 +23,7 @@ class Config:
 	# self.curr_process = None # one of None, 'slam', or 'amcl'
 	self.map_mgr = MapManager()
 	self.pose_svr = PoseServer()
-	self.map = None # name of the map
+	self.map_name = None
 
 	# at least one of these should be None at all times
 	self.amcl_process = None
@@ -38,14 +38,18 @@ def start_slam(cfg):
 		stop_amcl(cfg)
 
 	if cfg.slam_process:
-		print "SLAM already running"
+		print "SLAM is already running"
 		return False
 
-	# will this ever fail?
-	cfg.slam_process = subprocess.Popen(SLAM_CMD,
-										stdout=subprocess.PIPE,
-										shell=True,
-										preexec_fn=os.setsid)
+	try:
+		cfg.slam_process = subprocess.Popen(SLAM_CMD,
+											stdout=subprocess.PIPE,
+											shell=True,
+											preexec_fn=os.setsid)
+	except OSError:
+		# TODO: print helpful message
+		print "Unable to start SLAM"
+		return False
 	print "SLAM started"
 	# cfg.curr_process = "slam"
 	return True
@@ -56,7 +60,12 @@ def stop_slam(cfg):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.slam_process:
-		os.killpg(os.getpgid(cfg.slam_process.pid), signal.SIGTERM)
+		try:
+			os.killpg(os.getpgid(cfg.slam_process.pid), signal.SIGTERM)
+		except OSError:
+			# TODO: print more helpful message
+			print "Unable to stop SLAM"
+			return False
 		cfg.slam_process = None
 		print "SLAM stopped"
 		return True
@@ -64,15 +73,15 @@ def stop_slam(cfg):
 	print "SLAM not running; cannot stop"
 	return False
 
-def save_map(cfg):
+def save_map(cfg, map_name):
 	"""Save the map created by SLAM
 
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.slam_process:
-		subprocess.call(MAP_SAVER_CMD + cfg.map, shell=True)
+		subprocess.call(MAP_SAVER_CMD + map_name, shell=True)
 		cfg.map_mgr.buildmaplib()
-		print "Map %s saved" % cfg.map
+		print "Map %s saved" % map_name
 		return True
 	else:
 		print "SLAM isn't currently running. Please start SLAM first"
@@ -91,12 +100,16 @@ def start_amcl(cfg):
 		return False
 
 	# TODO: handle exceptions?
-	cfg.amcl_process = subprocess.Popen(
-		AMCL_CMD + cfg.map_mgr.loadmap4mapserver(cfg.map),
-		stdout=subprocess.PIPE,
-		shell=True,
-		preexec_fn=os.setsid)
-
+	try:
+		cfg.amcl_process = subprocess.Popen(
+			AMCL_CMD + cfg.map_mgr.loadmap4mapserver(cfg.map),
+			stdout=subprocess.PIPE,
+			shell=True,
+			preexec_fn=os.setsid)
+	except OSError:
+		# TODO: more helpful message
+		print "Unable to start AMCL"
+		return False
 	cfg.pose_svr.load(cfg.map_mgr.getmappath(cfg.map) + '.txt')
 	print "Navigation (AMCL) started"
 	return True
@@ -107,7 +120,12 @@ def stop_amcl(cfg):
 	Returns {bool} True if successful, False otherwise
 	"""
 	if cfg.amcl_process:
-		os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
+		try:
+			os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
+		except OSError:
+			# TODO: more helpful message
+			print "Unable to stop AMCL"
+			return False
 		cfg.amcl_process = None
 		cfg.map = None
 		print "Navigation (AMCL) stopped"
@@ -117,7 +135,8 @@ def stop_amcl(cfg):
 	return False
 
 def move(cfg, data):
-	"""Given coordinate data `data`, send a move command to these coordinates
+	"""Given coordinate data `data`, send a move command to the pose server with
+	these coordinates
 
 	Returns: {bool} True if successful, False otherwise
 	"""
@@ -136,30 +155,30 @@ def move(cfg, data):
 		print "Please start AMCL first"
 		return False
 
-def request_process(cfg, req):
-	"""Given a request `req` execute the corresponding function
+def request_process(cfg, request):
+	"""Given a request `request` execute the corresponding function
 
 	Returns: {bool} True if request is successful, False otherwise
 	"""
-	is_successful = False
 	if request['cmd'] == 'start_slam':
-		is_successful = start_slam(cfg)
-		if not is_successful:
-			return False
-		cfg.map = cfg.map_mgr.buildnewmap(request['data'])
-		cfg.pose_svr.create(cfg.map + '.txt')
-		cfg.pose_svr.load(cfg.map + '.txt')
+		if start_slam(cfg):
+			map_name = request['data']
+			cfg.map = cfg.map_mgr.buildnewmap(map_name)
+			cfg.pose_svr.create(map_name + '.txt')
+			cfg.pose_svr.load(map_name + '.txt')
 		#time.sleep(5)
 		#record_pose('home')
 	elif request['cmd'] == 'stop_slam':
-		if request['data']:
-			is_successful = save_map(cfg) and stop_slam(cfg)
+		map_name = request['data']
+		if map_name:
+			save_map(cfg, map_name)
+		stop_slam(cfg)
 	elif request['cmd'] == 'start_amcl':
-		is_successful = start_amcl(cfg)
+		start_amcl(cfg)
 	elif request['cmd'] == 'stop_amcl':
-		is_successful = stop_amcl(cfg)
+		stop_amcl(cfg)
 	elif request['cmd'] == 'move':
-		is_successful = move(cfg, request['data'])
+		move(cfg, request['data'])
 	elif request['cmd'] == 'set_goal_raw':
 		set_goal_raw(request['data'])
 	elif request['cmd'] == 'set_goal':
