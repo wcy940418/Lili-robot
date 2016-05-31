@@ -17,6 +17,7 @@ MAIN_SERVER_PORT = 10010
 SLAM_CMD = 'roslaunch lili_navi slam.launch'
 MAP_SAVER_CMD = 'rosrun map_server map_saver -f '
 AMCL_CMD = 'roslaunch lili_navi amcl.launch map_file:='
+BUFFER_SIZE = 1024
 
 class Config:
 	# self.service_lock = False
@@ -186,7 +187,7 @@ def request_process(cfg, request):
 	elif request['cmd'] == 'stop_navi':
 		stop_navi(cfg)
 	elif request['cmd'] == 'get_pose':
-		return read_recent_pose()
+		read_recent_pose(cfg)
 	elif request['cmd'] == 'record_pose':
 		record_pose(request['data'])
 	elif request['cmd'] == 'initial_pose':
@@ -209,11 +210,11 @@ def main():
 	while True:
 		with s.accept() as conn, addr:
 			print 'Connected by:', addr
-			data = conn.recv(1024)
+			data = conn.recv(BUFFER_SIZE)
 			while data:
 				req = json.loads(data)
 				request_process(cfg, req)
-				data = conn.recv(1024)
+				data = conn.recv(BUFFER_SIZE)
 			print "Client closed connection"
 
 """
@@ -319,35 +320,30 @@ def set_initial_pose_raw(cfg, data):
 	print "Cannot set raw initial pose; navigation (AMCL) not running"
 	return False
 
-def read_recent_pose():
-	global service_lock
-	global pose1
-	global map1
-	data = {}
-	if service_lock:
-		try:
-			sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-			sock.connect((HOST,POSE_SERVICE_PORT))
-			data['name'] = 'get_pose'
-			str = json.dumps(data)
-			sock.sendall(str)
-			data = sock.recv(1024)
-			if data:
-				sock.close()
-				try:
-					d = json.loads(data)
-					if d['name'] == 'robot_pose':
-						d.pop('name')
-						return d
-				except:
-					print "JSON data fomat is wrong"
-			else:
-				print "Cannot get robot pose"
-			sock.close()
-		except:
-			print "Cannot connect to pose server"
-	else:
-		print "No service running, please start AMCL or SLAM first"
+def read_recent_pose(cfg):
+	"""Get the most recent pose from the pose service
+
+	Returns: {dict} Pose data if successful, empty dictionary otherwise
+	"""
+	if cfg.slam_process or cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT))
+			s.sendall( json.dumps({'name':'get_pose'}) )
+			data = s.recv(BUFFER_SIZE)
+
+		if not data:
+			print "Unable to get pose"
+			return {}
+
+		if data['name'] == 'robot_pose':
+			data.pop('name')
+			return data
+		else:
+			print "Data received is not of name \"robot_pose\""
+			return {}
+
+	print "Cannot get recent pose; neither AMCL nor SLAM is running"
+	return {}
 
 def record_pose(name):
 	global service_lock
