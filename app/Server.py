@@ -32,7 +32,7 @@ class Config:
 
 class LiliSocket(socket.socket):
 	def __enter__:
-		return self.accept()
+		return self
 
 	def __exit__:
 		self.close()
@@ -348,9 +348,9 @@ def init_request_socket():
 
 def main():
 	cfg = Config()
-	s = init_request_socket()
 	while True:
-		with s.accept() as (conn, addr):
+		with init_request_socket() as s:
+			conn, addr = s.accept()
 			print 'Connected by:', addr
 			data = conn.recv(BUFFER_SIZE)
 			while data:
