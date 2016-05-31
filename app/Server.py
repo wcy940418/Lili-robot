@@ -284,24 +284,25 @@ def stop_navi(cfg):
 	print "Cannot stop navigation; navigation not running"
 	return False
 
-def set_initial_pose(data):
-	global service_lock
-	global now_service
-	global pose1
-	global map1
-	if service_lock and now_service == 'AMCL':
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-		sock.connect((HOST,POSE_SERVICE_PORT))
-		try:
-			dic = pose1.findall(name) # name not defined?
-			dic['name'] = 'initial'
-			str = json.dumps(pose1.findall(name))
-		except:
-			print "Do not have this pose"
-		sock.sendall(str)
-		sock.close()
-	else:
-		print "Need to start an AMCL service first"
+def set_initial_pose(cfg, name):
+	"""Given a known location string `name`, send the corresponding coordinate
+	data to the pose service
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT))
+			try:
+				coords = cfg.pose_svr.findall(name)
+			except PoseError as e:
+				print str(e)
+				return False
+			s.sendall(json.dumps(coords))
+			return True
+
+	print "Cannot set initial pose; navigation (AMCL) not running"
+	return False
 
 def set_initial_pose_raw(data):
 	global service_lock
