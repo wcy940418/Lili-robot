@@ -7,7 +7,7 @@ import subprocess
 import time
 import json
 
-from poseserver import PoseServer
+from poseserver import PoseServer, PoseError
 from mapmanager import MapManager
 from qrtransform import quaternion2rpy, rpy2quaternion
 
@@ -182,7 +182,7 @@ def request_process(cfg, request):
 	elif request['cmd'] == 'set_goal_raw':
 		set_goal_raw(cfg, request['data'])
 	elif request['cmd'] == 'set_goal':
-		set_goal(request['data'])
+		set_goal(cfg, request['data'])
 	elif request['cmd'] == 'stop_navi':
 		stop_navi()
 	elif request['cmd'] == 'get_pose':
@@ -248,26 +248,27 @@ def set_goal_raw(cfg, data):
 	print "Please start navigation (AMCL) first"
 	return False
 
-def set_goal(name):
-	global service_lock
-	global now_service
-	global pose1
-	global map1
-	if service_lock :
-		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # protocol, socket type
-		sock.connect((HOST,POSE_SERVICE_PORT))
-		try:
-			dic = pose1.findall(name)
-			dic['name'] = 'goal_map'
-			str = json.dumps(dic)
-			sock.sendall(str)
-			print "LILI will go to " + name
-		except: # first line in `try`
-			print "Do not have this pose"
+def set_goal(cfg, name):
+	"""Given a destination string `name` corresponding to a known location on
+	the loaded map, send the relevant data to the pose service
 
-		sock.close()
-	else: # see comment for set_goal_raw
-		print "Need to start an AMCL service first"
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT)) # TODO: see set_goal_raw
+			try:
+				coords = cfg.pose_svr.findall(name)
+			except PoseError as e:
+				print str(e)
+				return False
+			coords['name'] = 'goal_map'
+			s.sendall(json.dumps(coords))
+			print "Going to %s" % name
+			return True
+
+	print "Please start navigation (AMCL) first"
+	return False
 
 def stop_navi():
 	global service_lock
