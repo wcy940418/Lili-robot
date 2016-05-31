@@ -23,7 +23,7 @@ class Config:
 	# self.curr_process = None # one of None, 'slam', or 'amcl'
 	self.map_mgr = MapManager()
 	self.pose_svr = PoseServer()
-	self.map = None
+	self.map = None # name of the map
 
 	# at least one of these should be None at all times
 	self.amcl_process = None
@@ -73,6 +73,35 @@ def save_map(cfg):
 	else:
 		print "SLAM isn't currently running. Please start SLAM first"
 		return False
+
+def start_amcl(cfg):
+	"""Start AMCL navigation
+
+	Returns:
+	"""
+	if cfg.slam_process:
+		stop_slam(cfg)
+
+	# TODO: handle exceptions?
+	cfg.amcl_process = subprocess.Popen(
+		AMCL_CMD + cfg.map_mgr.loadmap4mapserver(cfg.map),
+		stdout=subprocess.PIPE,
+		shell=True,
+		preexec_fn=os.setsid)
+
+	cfg.pose_svr.load(cfg.map_mgr.getmappath(cfg.map) + '.txt')
+	print "Navigation started"
+
+def stop_amcl(cfg):
+	if cfg.amcl_process:
+		os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
+		cfg.amcl_process = None
+		cfg.map = None
+		print "Navigation stopped"
+		return True
+
+	print "Navigation not running; cannot stop"
+	return False
 
 def request_process(cfg, req):
 	"""Given a request `req` execute the corresponding function
@@ -156,47 +185,6 @@ global loaded_map
 
 class LILINAVIServerError(StandardError):
 	pass
-
-def start_amcl(name): # `name` is the name of the map (w/o filename suffix)
-	global service_lock
-	global now_service
-	global slam_process
-	global amcl_process
-	global pose1
-	global map1
-	if service_lock and now_service=='AMCL':
-		try:
-			os.killpg(os.getpgid(slam_process.pid), signal.SIGTERM)
-			service_lock = False
-			now_service = 'No'
-		except:
-			raise LILINAVIServerError("Service abnormal, please restart server")
-	try:
-		amcl_process = subprocess.Popen(AMCL_CMD+map1.loadmap4mapserver(name), stdout = subprocess.PIPE, shell = True, preexec_fn = os.setsid)
-		pose1.load(map1.getmappath(name) + '.txt')
-		loaded_map = map1.getmappath(name) + '.txt'
-		service_lock = True
-		now_service = 'AMCL'
-		print "Navigation started"
-	except:
-		raise LILINAVIServerError("Service abnormal, please restart server")
-
-def stop_amcl():
-	global service_lock
-	global now_service
-	global amcl_process
-	global loaded_map
-	global pose1
-	global map1
-	if service_lock and now_service=='AMCL':
-		try:
-			os.killpg(os.getpgid(amcl_process.pid), signal.SIGTERM)
-			loaded_map = ''
-			service_lock = False
-			now_service = 'No'
-			print "Navigation stopped"
-		except:
-			raise LILINAVIServerError("Service abnormal, please restart server")
 
 def set_goal_raw(data):
 	global service_lock
