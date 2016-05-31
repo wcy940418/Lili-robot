@@ -156,83 +156,6 @@ def move(cfg, data):
 		print "Please start AMCL first"
 		return False
 
-def request_process(cfg, request):
-	"""Given a request `request` execute the corresponding function
-
-	Returns: {bool} True if request is successful, False otherwise
-	"""
-	if request['cmd'] == 'start_slam':
-		if start_slam(cfg):
-			map_name = request['data']
-			cfg.map = cfg.map_mgr.buildnewmap(map_name)
-			cfg.pose_svr.create(map_name + '.txt')
-			cfg.pose_svr.load(map_name + '.txt')
-		#time.sleep(5)
-		#record_pose('home')
-	elif request['cmd'] == 'stop_slam':
-		map_name = request['data']
-		if map_name:
-			save_map(cfg, map_name)
-		stop_slam(cfg)
-	elif request['cmd'] == 'start_amcl':
-		start_amcl(cfg)
-	elif request['cmd'] == 'stop_amcl':
-		stop_amcl(cfg)
-	elif request['cmd'] == 'move':
-		move(cfg, request['data'])
-	elif request['cmd'] == 'set_goal_raw':
-		set_goal_raw(cfg, request['data'])
-	elif request['cmd'] == 'set_goal':
-		set_goal(cfg, request['data'])
-	elif request['cmd'] == 'stop_navi':
-		stop_navi(cfg)
-	elif request['cmd'] == 'get_pose':
-		read_recent_pose(cfg)
-	elif request['cmd'] == 'record_pose':
-		record_pose(request['data'])
-	elif request['cmd'] == 'initial_pose':
-		set_initial_pose(cfg, request['data'])
-	elif request['cmd'] == 'initial_pose_raw':
-		set_initial_pose_raw(cfg, request['data'])
-	return is_successful
-
-def init_request_socket():
-	"""Create and return a socket object at a fixed IP
-	"""
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	s.bind(('192.168.3.3', MAIN_SERVER_PORT))
-	s.listen(1)
-	return s
-
-def main():
-	cfg = Config()
-	s = init_request_socket()
-	while True:
-		with s.accept() as conn, addr:
-			print 'Connected by:', addr
-			data = conn.recv(BUFFER_SIZE)
-			while data:
-				req = json.loads(data)
-				request_process(cfg, req)
-				data = conn.recv(BUFFER_SIZE)
-			print "Client closed connection"
-
-"""
-# can't these be encapsulted in a class?
-global service_lock # keep track of whether process was successfully started?
-service_lock = False
-global now_service # keep track of current service
-now_service = 'No'
-global map1
-map1 = MapManager()
-global pose1
-pose1 = PoseServer()
-global loaded_map
-"""
-
-class LILINAVIServerError(StandardError):
-	pass
-
 def set_goal_raw(cfg, data):
 	"""Given goal pose data `data`, send it to the pose service
 
@@ -285,6 +208,21 @@ def stop_navi(cfg):
 	print "Cannot stop navigation; navigation not running"
 	return False
 
+def set_initial_pose_raw(cfg, data):
+	"""Given raw coordinate data `data`, send it to the pose service
+
+	Returns: {bool} True if successful, False otherwise
+	"""
+	if cfg.amcl_process:
+		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+			s.connect((HOST, POSE_SERVICE_PORT))
+			data['name'] = 'initial'
+			s.sendall(json.dumps(data))
+			return True
+
+	print "Cannot set raw initial pose; navigation (AMCL) not running"
+	return False
+
 def set_initial_pose(cfg, name):
 	"""Given a known location string `name` in the loaded map, send the
 	corresponding coordinate data to the pose service
@@ -303,21 +241,6 @@ def set_initial_pose(cfg, name):
 			return True
 
 	print "Cannot set initial pose; navigation (AMCL) not running"
-	return False
-
-def set_initial_pose_raw(cfg, data):
-	"""Given raw coordinate data `data`, send it to the pose service
-
-	Returns: {bool} True if successful, False otherwise
-	"""
-	if cfg.amcl_process:
-		with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-			s.connect((HOST, POSE_SERVICE_PORT))
-			data['name'] = 'initial'
-			s.sendall(json.dumps(data))
-			return True
-
-	print "Cannot set raw initial pose; navigation (AMCL) not running"
 	return False
 
 def read_recent_pose(cfg):
@@ -361,6 +284,73 @@ def record_pose(cfg, name):
 
 	print "Cannot record pose; neither SLAM nor AMCL is running"
 	return False
+
+def request_process(cfg, request):
+	"""Given a request `request` execute the corresponding function
+	"""
+	# SLAM commands
+	if request['cmd'] == 'start_slam':
+		if start_slam(cfg):
+			map_name = request['data']
+			cfg.map = cfg.map_mgr.buildnewmap(map_name)
+			cfg.pose_svr.create(map_name + '.txt')
+			cfg.pose_svr.load(map_name + '.txt')
+	elif request['cmd'] == 'stop_slam':
+		map_name = request['data']
+		if map_name:
+			save_map(cfg, map_name)
+		stop_slam(cfg)
+
+	# AMCL commands
+	elif request['cmd'] == 'start_amcl':
+		start_amcl(cfg)
+	elif request['cmd'] == 'stop_amcl':
+		stop_amcl(cfg)
+
+	# initial pose setters
+	elif request['cmd'] == 'initial_pose_raw':
+		set_initial_pose_raw(cfg, request['data'])
+	elif request['cmd'] == 'initial_pose':
+		set_initial_pose(cfg, request['data'])
+
+	# move and stop commands
+	elif request['cmd'] == 'move':
+		move(cfg, request['data'])
+	elif request['cmd'] == 'stop_navi':
+		stop_navi(cfg)
+
+	# goal setters
+	elif request['cmd'] == 'set_goal_raw':
+		set_goal_raw(cfg, request['data'])
+	elif request['cmd'] == 'set_goal':
+		set_goal(cfg, request['data'])
+
+	# pose getter and recorder
+	elif request['cmd'] == 'get_pose':
+		read_recent_pose(cfg)
+	elif request['cmd'] == 'record_pose':
+		record_pose(request['data'])
+
+def init_request_socket():
+	"""Create and return a socket object at a fixed IP
+	"""
+	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	s.bind(('192.168.3.3', MAIN_SERVER_PORT))
+	s.listen(1)
+	return s
+
+def main():
+	cfg = Config()
+	s = init_request_socket()
+	while True:
+		with s.accept() as conn, addr:
+			print 'Connected by:', addr
+			data = conn.recv(BUFFER_SIZE)
+			while data:
+				req = json.loads(data)
+				request_process(cfg, req)
+				data = conn.recv(BUFFER_SIZE)
+			print "Client closed connection"
 
 if __name__ == '__main__':
 	main()
