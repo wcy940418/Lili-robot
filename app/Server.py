@@ -1,5 +1,15 @@
 #!/usr/bin/env python
+"""
+Server.py
+The purpose of this module is to initialize a socket bound to a fixed IP and
+port that listens for commands sent by a module that controls the user
+interface. These commands control the robot.
+The reason this is necessary is because the user interface runs on
+Windows, whereas the robot is controlled through a Ubuntu virtual machine
 
+		  Windows              Ubuntu VM
+user -> client_tele.py (UI) -> Server.py
+"""
 import socket
 import os
 import signal
