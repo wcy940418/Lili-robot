@@ -20,6 +20,7 @@ import json
 from poseserver import PoseServer, PoseError
 from mapmanager import MapManager, MapError
 from qrtransform import quaternion2rpy, rpy2quaternion
+from lilisocket import LiliSocket
 
 HOST = 'localhost'
 IP = '192.168.3.3'
@@ -40,14 +41,6 @@ class Config:
 	# at least one of these should be None at all times
 	amcl_process = None
 	slam_process = None
-
-class LiliSocket(socket.socket):
-	def __enter__(self):
-		return self
-
-	def __exit__(self, exception_type, exception_value, traceback):
-		self.shutdown(2) # shutdown receiving and sending
-		self.close()
 
 def start_slam(cfg):
 	"""Start SLAM
