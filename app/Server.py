@@ -251,7 +251,7 @@ def set_initial_pose(cfg, name):
 	print "Cannot set initial pose; navigation (AMCL) not running"
 	return False
 
-def read_recent_pose(cfg):
+def read_recent_pose(cfg, verbose=True):
 	"""Get the most recent pose from the pose service
 
 	Returns: {dict} Pose data if successful, empty dictionary otherwise
@@ -268,6 +268,10 @@ def read_recent_pose(cfg):
 
 		if data['name'] == 'robot_pose':
 			data.pop('name')
+			if verbose:
+				print "Most recent pose:"
+				for k, v in data.iteritems():
+					print "%3s: %.4f" % (k, v)
 			return data
 		else:
 			print "Data received is not of name \"robot_pose\""
@@ -283,7 +287,7 @@ def record_pose(cfg, name):
 	Returns: {bool} True if successful, False otherwise
 	"""
 	if cfg.slam_process or cfg.amcl_process:
-		pose = json.dumps(read_recent_pose(cfg))
+		pose = json.dumps(read_recent_pose(cfg, verbose=False))
 		cfg.pose_svr.append(name, pose)
 		print "Recorded pose:"
 		for k, v in pose.iteritems():
@@ -317,27 +321,36 @@ def request_process(cfg, request):
 
 	# initial pose setters
 	elif request['cmd'] == 'initial_pose_raw':
-		set_initial_pose_raw(cfg, request['data'])
+		coords = request['data']
+		set_initial_pose_raw(cfg, coords)
 	elif request['cmd'] == 'initial_pose':
-		set_initial_pose(cfg, request['data'])
+		name = request['data']
+		set_initial_pose(cfg, name)
 
 	# move and stop commands
 	elif request['cmd'] == 'move':
-		move(cfg, request['data'])
+		coords = request['data']
+		move(cfg, coords)
 	elif request['cmd'] == 'stop_navi':
 		stop_navi(cfg)
 
 	# goal setters
 	elif request['cmd'] == 'set_goal_raw':
-		set_goal_raw(cfg, request['data'])
+		coords = request['data']
+		set_goal_raw(cfg, coords)
 	elif request['cmd'] == 'set_goal':
-		set_goal(cfg, request['data'])
+		name = request['data']
+		set_goal(cfg, name)
 
 	# pose getter and recorder
 	elif request['cmd'] == 'get_pose':
 		read_recent_pose(cfg)
 	elif request['cmd'] == 'record_pose':
-		record_pose(request['data'])
+		name = request['data']
+		record_pose(cfg, name)
+
+	else:
+		print "Unrecognized command \"%s\"" % request['cmd']
 
 def init_request_socket():
 	"""Create and return a socket object at a fixed IP
