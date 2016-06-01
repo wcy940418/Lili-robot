@@ -12,6 +12,7 @@ from mapmanager import MapManager
 from qrtransform import quaternion2rpy, rpy2quaternion
 
 HOST = 'localhost'
+IP = '192.168.3.3'
 POSE_SERVICE_PORT = 5555
 MAIN_SERVER_PORT = 10010
 SLAM_CMD = 'roslaunch lili_navi slam.launch'
@@ -356,14 +357,17 @@ def init_request_socket():
 	"""Create and return a socket object at a fixed IP
 	"""
 	s = LiliSocket(socket.AF_INET, socket.SOCK_STREAM)
-	s.bind(('192.168.3.3', MAIN_SERVER_PORT))
+	s.bind((IP, MAIN_SERVER_PORT))
 	s.listen(1)
 	return s
 
 def main():
 	cfg = Config()
-	while True:
-		with init_request_socket() as s:
+	with init_request_socket() as s:
+		print "Socket initialized"
+		print "IP: %s" % IP
+		print "Port: %s" % MAIN_SERVER_PORT
+		while True:
 			conn, addr = s.accept()
 			print 'Connected by:', addr
 			data = conn.recv(BUFFER_SIZE)
