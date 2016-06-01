@@ -8,7 +8,7 @@ import time
 import json
 
 from poseserver import PoseServer, PoseError
-from mapmanager import MapManager
+from mapmanager import MapManager, MapError
 from qrtransform import quaternion2rpy, rpy2quaternion
 
 HOST = 'localhost'
@@ -97,7 +97,7 @@ def save_map(cfg, map_name):
 		print "SLAM isn't currently running. Please start SLAM first"
 		return False
 
-def start_amcl(cfg):
+def start_amcl(cfg, map_name):
 	"""Start AMCL navigation
 
 	Returns: {bool} True if successful, False otherwise
@@ -112,7 +112,7 @@ def start_amcl(cfg):
 	# TODO: handle exceptions?
 	try:
 		cfg.amcl_process = subprocess.Popen(
-			AMCL_CMD + cfg.map_mgr.loadmap4mapserver(cfg.map),
+			AMCL_CMD + cfg.map_mgr.loadmap4mapserver(map_name),
 			stdout=subprocess.PIPE,
 			shell=True,
 			preexec_fn=os.setsid)
@@ -120,7 +120,10 @@ def start_amcl(cfg):
 		# TODO: more helpful message
 		print "Unable to start AMCL"
 		return False
-	cfg.pose_svr.load(cfg.map_mgr.getmappath(cfg.map) + '.txt')
+	except MapError as e:
+		print str(e)
+		return False
+	cfg.pose_svr.load(cfg.map_mgr.getmappath(map_name) + '.txt')
 	print "Navigation (AMCL) started"
 	return True
 
@@ -316,7 +319,8 @@ def request_process(cfg, request):
 
 	# AMCL commands
 	elif request['cmd'] == 'start_amcl':
-		start_amcl(cfg)
+		map_name = request['data']
+		start_amcl(cfg, map_name)
 	elif request['cmd'] == 'stop_amcl':
 		stop_amcl(cfg)
 
