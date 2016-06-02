@@ -361,6 +361,7 @@ def init_request_socket():
 	"""Create and return a socket object at a fixed IP
 	"""
 	s = LiliSocket(socket.AF_INET, socket.SOCK_STREAM)
+	s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 	s.bind((IP, MAIN_SERVER_PORT))
 	s.listen(1)
 	return s
