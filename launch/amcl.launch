@@ -15,7 +15,7 @@
     </node>
     <!--Fake LIDAR Node: for clearing-->
     <node pkg="lili_navi" type="fake_laser.py" name="clearing_lidar">
-        <param name="distance" value="10.0"/>
+        <param name="distance" value="1.0"/>
     </node>
     <!--Tele pose Node-->
     <node pkg="lili_navi" type="tele_pos.py" name="tele_pos" respawn="true"/>
