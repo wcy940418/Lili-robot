@@ -12,7 +12,7 @@ import json
 import tf
 # import roslib
 
-from math import *
+# from math import *
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from actionlib_msgs.msg import GoalID
 from lilisocket import LiliSocket
@@ -57,10 +57,30 @@ def create_pose_msg(d, seq, m):
 	m.pose.orientation.z = dic['z']
 	m.pose.orientation.w = dic['w']
 
-def read_recent_pose():
+def read_recent_pose(l):
+	"""Given a tf listener `l`, get the pose information and return it in a
+	JSON string
+
+	Returns: {str} The pose data in a JSON formatted string
 	"""
-	"""
-	pass
+	exceptions = (tf.LookupException,
+	              tf.ConnectivityException,
+				  tf.ExtrapolationException)
+	try:
+		translation, rotation = l.lookupTransform(target_frame='/map',
+		                                          source_frame='/base_link',
+												  time=rp.Time(0))
+	except exceptions:
+		print "Unable to get robot pose"
+		return ""
+
+	yaw = quaternion2rpy(rotation[3], rotation[0], rotation[1], rotation[2])
+	data = dict(name='robot_pose',
+	            x=translation[0],
+				y=translation[1],
+				z=translation[2],
+				yaw=yaw)
+	return json.dumps(data)
 
 def main():
 	rp.init_node('tele_pos')
@@ -99,7 +119,7 @@ def main():
 					pub_initial.publish(message)
 					seq_initial += 1
 				elif data['name'] == 'get_pose':
-					pose = read_recent_pose()
+					pose = read_recent_pose(listener_pose)
 					conn.sendall(pose)
 				elif data['name'] == 'goal_robot':
 					message = PoseStamped()
