@@ -4,18 +4,14 @@
     <arg name="robot_port" default="/dev/ttyUSB1"/>
     <arg name="joy_port" default="/dev/input/js1"/>
     <arg name="map_file" default="~/map.yaml"/>
-    <arg name="initial_pose_x" default="0.0"/> 
-    <arg name="initial_pose_y" default="0.0"/> 
+    <arg name="initial_pose_x" default="0.0"/>
+    <arg name="initial_pose_y" default="0.0"/>
     <arg name="initial_pose_a" default="0.0"/>
     <!--XV-11 LIDAR Node-->
     <node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_lidar">
         <param name="frame_id" value="laser_scan"/>
         <param name="firmware_version" value="2"/>
         <param name="port" value="$(arg lidar_port)"/>
-    </node>
-    <!--Fake LIDAR Node: for clearing-->
-    <node pkg="lili_navi" type="fake_laser.py" name="clearing_lidar">
-        <param name="distance" value="1.0"/>
     </node>
     <!--Tele pose Node-->
     <node pkg="lili_navi" type="tele_pos.py" name="tele_pos" respawn="true"/>
@@ -35,8 +31,6 @@
     <node pkg="tf" type="static_transform_publisher" name="base_mask_tf" args="0 0 0 0 0 0 base_footprint base_link 100" />
     <!--XV-11 LIDAR static tf-->
     <node pkg="tf" type="static_transform_publisher" name="base_to_laser_tf" args="0 0 0 0 0 0 base_link laser_scan 100" />
-    <!--Fake LIDAR static tf-->
-    <node pkg="tf" type="static_transform_publisher" name="base_to_fake_laser_tf" args="0 0 0 0 0 0 base_link fake_scan 100" />
     <!--robot_pose_ekf Node-->
     <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
         <param name="output_frame" value="odom"/>
