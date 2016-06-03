@@ -29,7 +29,18 @@ BUFFER_SIZE = 1024
 def init_socket():
 	"""Initializes a LiliSocket and returns it
 	"""
-	pass
+	to_ret = LiliSocket(socket.AF_INET, socket.SOCK_STREAM)
+
+	while True:
+		try:
+			to_ret.bind(('localhost', 5555))
+			to_ret.listen(1)
+			return to_ret
+		except socket.error as e:
+			print str(e)
+			t = 15
+			print "Trying again in %d seconds" % t
+			time.sleep(t)
 
 def create_pose_msg(d, m):
 	"""Given coordinate data `d` and a pose message `m`, set the values of `m`
