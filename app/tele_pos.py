@@ -1,140 +1,143 @@
 #!/usr/bin/env python
-import rospy 
-import geometry_msgs.msg
-import actionlib_msgs.msg
-from math import *
+"""
+tele_pos.py
+This module initializes a ROS node that publishes information based on the
+commands sent from Server.py
+"""
+
+import rospy as rp
 import socket
 import time
 import json
 import tf
-import roslib
-from qrtransform import *
+# import roslib
 
-FIXED_COVARIANCE = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
+# from math import *
+from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
+from actionlib_msgs.msg import GoalID
+from lilisocket import LiliSocket
+from qrtransform import quaternion2rpy, rpy2quaternion
 
-def _socket_init():
-	global s
-	print 'ahaha'
-	s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+FIXED_COVARIANCE = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.25, 0.0, 0.0, 0.0, 0.0,
+					0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+					0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+					0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+					0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
+BUFFER_SIZE = 1024
+
+def init_socket():
+	"""Initializes a LiliSocket and returns it
+	"""
+	to_ret = LiliSocket(socket.AF_INET, socket.SOCK_STREAM)
+
+	while True:
+		try:
+			to_ret.bind(('localhost', 5555))
+			to_ret.listen(1)
+			return to_ret
+		except socket.error as e:
+			print str(e)
+			t = 15
+			print "Trying again in %d seconds" % t
+			time.sleep(t)
+
+def create_pose_msg(d, seq, m):
+	"""Given coordinate data `d`, number of iterations `seq`, and a pose message
+	`m`, set the values of `m` corresponding to the fields in `d`.
+	"""
+	dic = rpy2quaternion(0, 0, d['yaw'])
+	m.header.seq = seq
+	m.header.stamp = rp.Time.now() - rp.Duration(5)
+	m.pose.position.x = d['x']
+	m.pose.position.y = d['y']
+	m.pose.position.z = d['z']
+	m.pose.orientation.x = 0.0
+	m.pose.orientation.y = 0.0
+	m.pose.orientation.z = dic['z']
+	m.pose.orientation.w = dic['w']
+
+def read_recent_pose(l):
+	"""Given a tf listener `l`, get the pose information and return it in a
+	JSON string
+
+	Returns: {str} The pose data in a JSON formatted string
+	"""
+	exceptions = (tf.LookupException,
+	              tf.ConnectivityException,
+				  tf.ExtrapolationException)
 	try:
-		s.bind(('localhost', 5555))
-		s.listen(1)
-	except:
-		print "port has been occupied"
-	print "pose server start sucessfully"
+		translation, rotation = l.lookupTransform(target_frame='/map',
+		                                          source_frame='/base_link',
+												  time=rp.Time(0))
+	except exceptions:
+		print "Unable to get robot pose"
+		return ""
 
-def _message_init():
-	global pub_goal
-	global pub_estimate, pub_cancel, msg_cancel
-	global msg_goal, msg_initial
-	pub_goal = rospy.Publisher('/move_base_simple/goal', geometry_msgs.msg.PoseStamped, queue_size = 10)
-	pub_estimate = rospy.Publisher('/initialpose' ,geometry_msgs.msg.PoseWithCovarianceStamped, queue_size = 10)
-	pub_cancel = rospy.Publisher('/move_base/cancel' ,actionlib_msgs.msg.GoalID, queue_size = 10)
-	rospy.init_node('tele_pos', anonymous = False)
-	msg_goal = geometry_msgs.msg.PoseStamped()
-	msg_initial = geometry_msgs.msg.PoseWithCovarianceStamped()
-	msg_cancel = actionlib_msgs.msg.GoalID()
+	yaw = quaternion2rpy(rotation[3], rotation[0], rotation[1], rotation[2])
+	data = dict(name='robot_pose',
+	            x=translation[0],
+				y=translation[1],
+				z=translation[2],
+				yaw=yaw)
+	return json.dumps(data)
 
-def start_tf_listener():
-	global pose_listener
-	pose_listener = tf.TransformListener()
+def main():
+	rp.init_node('tele_pos')
 
-def read_recent_pose():
-	global pose_listener
-	dic = {}
-	try:
-		(trans,rot) = pose_listener.lookupTransform('/map', '/base_link', rospy.Time(0))
-		dic['name'] = 'robot_pose'
-		dic['x'] = trans[0]
-		dic['y'] = trans[1]
-		dic['z'] = trans[2]
-		dic['yaw'] = quaternion2rpy(rot[3], rot[0], rot[1], rot[2])['yaw']
-		return json.dumps(dic)
-	except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-		print "Cannot get robot pose"
+	pub_goal = rp.Publisher('/move_base_simple/goal',
+	                        PoseStamped,
+							queue_size=10)
+	pub_initial = rp.Publisher('/initialpose',
+	                           PoseWithCovarianceStamped,
+							   queue_size=10)
+	pub_cancel = rp.Publisher('/move_base/cancel',
+	                          GoalID,
+							  queue_size=10)
+	listener_pose = tf.TransformListener()
+	seq_goal = 0
+	seq_initial = 0
 
-def tele_pos():
-	_socket_init()
-	while not rospy.is_shutdown():
-		global pub_goal, pub_estimate, pub_cancel
-		global seq_goal, seq_initial
-		global msg_goal, msg_initial, msg_cancel
-		global s
-		global conn
-		conn, addr = s.accept()
-		print 'Connected by:', addr
-		while True:
-			data = conn.recv(1024)
-			if data:
-				d = json.loads(data)
-				if d['name'] == 'goal_map':
-					dic = rpy2quaternion(0,0,d['yaw'])
-					msg_goal.header.seq = seq_goal
-					msg_goal.header.stamp = rospy.Time.now() - rospy.Duration(5)
-					msg_goal.header.frame_id = 'map'
-					msg_goal.pose.position.x = d['x']
-					msg_goal.pose.position.y = d['y']
-					msg_goal.pose.position.z = d['z']
-					msg_goal.pose.orientation.x = 0.0
-					msg_goal.pose.orientation.y = 0.0
-					msg_goal.pose.orientation.z = dic['z']
-					msg_goal.pose.orientation.w = dic['w']
+	with init_socket() as s:
+		while not rp.is_shutdown():
+			conn, addr = s.accept() # TODO: might need to close conn
+			data = conn.recv(BUFFER_SIZE)
+			while data:
+				data = json.loads(data)
+
+				if data['name'] == 'goal_map':
+					message = PoseStamped()
+					create_pose_msg(data, seq_goal, message)
+					message.header.frame_id = 'map'
+					pub_goal.publish(message)
 					seq_goal += 1
-					pub_goal.publish(msg_goal)
-				elif d['name'] == 'cancel':
-					pub_cancel.publish(msg_cancel)
-				elif d['name'] == 'initial':
-					dic = rpy2quaternion(0,0,d['yaw'])
-					msg_initial.header.seq = seq_initial
-					msg_initial.header.stamp = rospy.Time.now() - rospy.Duration(5)
-					msg_initial.header.frame_id = 'map'
-					msg_initial.pose.position.x = d['x']
-					msg_initial.pose.position.y = d['y']
-					msg_initial.pose.position.z = d['z']
-					msg_initial.pose.orientation.x = 0.0
-					msg_initial.pose.orientation.y = 0.0
-					msg_initial.pose.orientation.z = dic['z']
-					msg_initial.pose.orientation.w = dic['w']
-					msg_initial.pose.covariance = FIXED_COVARIANCE
+				elif data['name'] == 'initial':
+					message = PoseWithCovarianceStamped()
+					create_pose_msg(data, seq_initial, message)
+					message.header.frame_id = 'map'
+					message.pose.covariance = FIXED_COVARIANCE
+					pub_initial.publish(message)
 					seq_initial += 1
-					pub_initial.publish(msg_initial)
-				elif d['name'] == 'get_pose':
-					str = read_recent_pose()
-					conn.sendall(str)
-				elif d['name'] == 'goal_robot':
-					dic = rpy2quaternion(0,0,d['yaw'])
-					msg_goal.header.seq = seq_goal
-					msg_goal.header.stamp = rospy.Time.now() - rospy.Duration(5)
-					msg_goal.header.frame_id = 'base_link'
-					msg_goal.pose.position.x = d['x']
-					msg_goal.pose.position.y = d['y']
-					msg_goal.pose.position.z = d['z']
-					msg_goal.pose.orientation.x = 0.0
-					msg_goal.pose.orientation.y = 0.0
-					msg_goal.pose.orientation.z = dic['z']
-					msg_goal.pose.orientation.w = dic['w']
+				elif data['name'] == 'get_pose':
+					pose = read_recent_pose(listener_pose)
+					conn.sendall(pose)
+				elif data['name'] == 'goal_robot':
+					message = PoseStamped()
+					create_pose_msg(data, seq_goal, message)
+					message.header.frame_id = 'base_link'
+					pub_goal.publish(message)
 					seq_goal += 1
-					pub_goal.publish(msg_goal)
-			else: 		#if client closes connection, conn.recv() will return a null value
-				print "Client has been killed"
-				break
-		conn.close()
-		print 'Disconnected'
+				elif data['name'] == 'cancel':
+					pub_cancel.publish(GoalID())
 
-def shutdown_hook():
-	global s
-	#global conn
-	#conn.close()
-	s.close()
-	print "tele_pos server has shutdown safely"
+				data = conn.recv(BUFFER_SIZE)
+			print "Disconnected"
 
-if __name__ == '__main__':
+
+
+if __name__ == "__main__":
 	try:
-		seq_goal = 0
-		seq_initial = 0
-		rospy.on_shutdown(shutdown_hook)
-		_message_init()
-		start_tf_listener()
-		tele_pos()
-	except rospy.ROSInterruptException:
+		main()
+		# print len(FIXED_COVARIANCE)
+	except rp.ROSInterruptException:
 		pass
