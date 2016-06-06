@@ -10,6 +10,7 @@ import rospy as rp
 from scipy import interpolate
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped as PWCS
+from move_base_msgs.msg import MoveBaseActionResult
 
 def plan_callback(msg, arr):
     """Records the plans created by global_planner in a list
@@ -18,12 +19,12 @@ def plan_callback(msg, arr):
     msg {Path} The heard message
     arr {list} List to store plans
     """
-    x = lambda pose: pose.position.x
-    y = lambda pose: pose.position.y
-    pos_data = [[x(pose), y(pose)] for pose in msg.poses]
+    x = lambda pose_stamped: pose_stamped.pose.position.x
+    y = lambda pose_stamped: pose_stamped.pose.position.y
+    pos_data = [[x(pose_stamped), y(pose_stamped)] for pose_stamped in msg.poses]
     arr.append(pos_data)
 
-def pose_callback(msg, arr, uncert):
+def pose_callback(msg, (arr, uncert)):
     """Records the poses given by amcl in a list
 
     Parameters:
@@ -32,10 +33,19 @@ def pose_callback(msg, arr, uncert):
     uncert {list} List to store uncertainty data
     """
     # TODO: Deal with uncertainty data
-    x = msg.pose.position.x
-    y = msg.pose.position.y
+    x = msg.pose.pose.position.x
+    y = msg.pose.pose.position.y
     # z = msg.pose.position.z
     arr.append([x, y]) # assume on 2D plane
+
+def result_callback(msg, (plans, actual, uncert)):
+    """
+    """
+    if msg.status.status == 3: # succeeded
+        path_planned = np.array(plans[-1]) # get most recent plan
+        path_actual = np.array(actual)
+        path_uncert = np.array(uncert)
+        rp.loginfo(error_calc(path_planned, path_actual, path_uncert))
 
 def error_calc(plan, actual, uncert):
     """Given a planned path `plan`, actual path `actual`, and uncertainty in
@@ -55,6 +65,7 @@ def error_calc(plan, actual, uncert):
 
     sse = np.float64(0)
     for x, y in actual:
+        # TODO: raises ValueError when x is out of bounds 
         sq_err = (f(x) - y) ** 2 # TODO: what happens when x is not in the domain of f
         sse += sq_err
 
@@ -68,21 +79,20 @@ def main():
     path_actual = []
     path_uncert = []
 
-    rp.Subscriber("/global_planner/plan",
+    rp.Subscriber("/move_base/DWAPlannerROS/local_plan",
                   data_class=Path,
                   callback=plan_callback,
                   callback_args=paths_planned)
-    rp.Subscriber("/amcl/amcl_pose",
+    rp.Subscriber("/amcl_pose",
                   data_class=PWCS,
                   callback=pose_callback,
                   callback_args=(path_actual, path_uncert))
+    rp.Subscriber("/move_base/result",
+                  data_class=MoveBaseActionResult,
+                  callback=result_callback,
+                  callback_args=(paths_planned, path_actual, path_uncert))
 
     rp.spin()
-
-    path_planned = np.array(paths_planned[-1]) # get most recent plan
-    path_actual = np.array(path_actual)
-    path_uncert = np.array(path_uncert)
-    error_calc(path_planned, path_actual, path_uncert)
 
 if __name__ == "__main__":
     main()
