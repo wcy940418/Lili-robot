@@ -66,8 +66,4 @@
         <remap from="/cmd_vel_mux/input/navi_cmd_vel" to="navi_cmd_vel"/>
         <remap from="/cmd_vel_mux/output/cmd_vel" to="cmd_vel"/>
     </node>
-    <!--clear costmap-->
-    <node pkg="amcl" type="clear_costmap_recovery" name="costmap_recovery">
-      <param name="reset_distance" value="3.0"/>
-    </node>
 </launch>
