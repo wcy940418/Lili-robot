@@ -42,6 +42,8 @@ def pose_callback(msg, (arr, uncert)):
 def result_callback(msg, (plans, actual, uncert)):
     """
     """
+    rp.loginfo(str(plans))
+    rp.loginfo(str(actual))
     success = msg.status.status == 3
     if success:
         path_planned = np.array(plans[-1]) # get most recent plan
@@ -66,12 +68,17 @@ def error_calc(plan, actual, uncert):
 
     # continuous and piecewise linear interpolation
     # extrapolate to handle values of x outside of the domain of f
-    f = interpolate.interp1d(xs, ys, fill_value="extrapolate")
+    # TODO: handle extrapolation--only available in version 0.17
+    f = interpolate.interp1d(xs, ys)
 
     sse = 0.0
     for x_0, y_0 in actual:
         sq_dist = lambda x: (x_0 - x) ** 2 + (y_0 - f(x)) ** 2
-        result = minimize(sq_dist, f(x_0))
+        try:
+            result = minimize(sq_dist, f(x_0))
+        except ValueError: # x_0 is out of bounds
+            rp.logerr("x_0 out of bounds")
+            continue
         if result.success:
             sse += sq_dist(result.x[0]) # x should be 1x1 ndarray
         else:
