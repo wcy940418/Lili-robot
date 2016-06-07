@@ -10,9 +10,7 @@ import socket
 import time
 import json
 import tf
-# import roslib
 
-# from math import *
 from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
 from actionlib_msgs.msg import GoalID
 from lilisocket import LiliSocket
@@ -25,6 +23,23 @@ FIXED_COVARIANCE = [0.25, 0.0, 0.0, 0.0, 0.0, 0.0,
 					0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
 					0.0, 0.0, 0.0, 0.0, 0.0, 0.06853891945200942]
 BUFFER_SIZE = 1024
+
+class Container:
+    """A container for persistent variables
+    """
+    def __init__(self):
+    	self.pub_goal = rp.Publisher('/move_base_simple/goal',
+    	                             PoseStamped,
+    							     queue_size=10)
+    	self.pub_initial = rp.Publisher('/initialpose',
+    	                                PoseWithCovarianceStamped,
+    							        queue_size=10)
+    	self.pub_cancel = rp.Publisher('/move_base/cancel',
+    	                               GoalID,
+    							       queue_size=10)
+    	self.listener_pose = tf.TransformListener()
+    	self.seq_goal = 0
+    	self.seq_initial = 0
 
 def init_socket():
 	"""Initializes a LiliSocket and returns it
@@ -82,58 +97,54 @@ def read_recent_pose(l):
 				yaw=yaw)
 	return json.dumps(data)
 
+def process_data(conn, c):
+    """Processes incoming data from socket `conn` and performs the corresponding
+    action using the attributes from container `c`
+    """
+	data = conn.recv(BUFFER_SIZE)
+	while data:
+		data = json.loads(data)
+
+		if data['name'] == 'goal_map':
+			message = PoseStamped()
+			create_pose_msg(data, c.seq_goal, message)
+			message.header.frame_id = 'map'
+			c.pub_goal.publish(message)
+			c.seq_goal += 1
+		elif data['name'] == 'initial':
+			message = PoseWithCovarianceStamped()
+			create_pose_msg(data, c.seq_initial, message)
+			message.header.frame_id = 'map'
+			message.pose.covariance = FIXED_COVARIANCE
+			c.pub_initial.publish(message)
+			c.seq_initial += 1
+		elif data['name'] == 'get_pose':
+			pose = read_recent_pose(c.listener_pose)
+			conn.sendall(pose)
+		elif data['name'] == 'goal_robot':
+			message = PoseStamped()
+			create_pose_msg(data, c.seq_goal, message)
+			message.header.frame_id = 'base_link'
+			c.pub_goal.publish(message)
+			c.seq_goal += 1
+		elif data['name'] == 'cancel':
+			c.pub_cancel.publish(GoalID())
+
+		data = conn.recv(BUFFER_SIZE)
+
 def main():
 	rp.init_node('tele_pos')
 
-	pub_goal = rp.Publisher('/move_base_simple/goal',
-	                        PoseStamped,
-							queue_size=10)
-	pub_initial = rp.Publisher('/initialpose',
-	                           PoseWithCovarianceStamped,
-							   queue_size=10)
-	pub_cancel = rp.Publisher('/move_base/cancel',
-	                          GoalID,
-							  queue_size=10)
-	listener_pose = tf.TransformListener()
-	seq_goal = 0
-	seq_initial = 0
+    c = Container()
 
 	with init_socket() as s:
 		while not rp.is_shutdown():
-			conn, addr = s.accept() # TODO: might need to close conn
-			data = conn.recv(BUFFER_SIZE)
-			while data:
-				data = json.loads(data)
-
-				if data['name'] == 'goal_map':
-					message = PoseStamped()
-					create_pose_msg(data, seq_goal, message)
-					message.header.frame_id = 'map'
-					pub_goal.publish(message)
-					seq_goal += 1
-				elif data['name'] == 'initial':
-					message = PoseWithCovarianceStamped()
-					create_pose_msg(data, seq_initial, message)
-					message.header.frame_id = 'map'
-					message.pose.covariance = FIXED_COVARIANCE
-					pub_initial.publish(message)
-					seq_initial += 1
-				elif data['name'] == 'get_pose':
-					pose = read_recent_pose(listener_pose)
-					conn.sendall(pose)
-				elif data['name'] == 'goal_robot':
-					message = PoseStamped()
-					create_pose_msg(data, seq_goal, message)
-					message.header.frame_id = 'base_link'
-					pub_goal.publish(message)
-					seq_goal += 1
-				elif data['name'] == 'cancel':
-					pub_cancel.publish(GoalID())
-
-				data = conn.recv(BUFFER_SIZE)
-			print "Disconnected"
-
-
+            try:
+                conn, addr = s.accept() # TODO: might need to close conn
+                process_data(conn, c)
+            except socket.error:
+                conn.close()
+    			print "Disconnected"
 
 if __name__ == "__main__":
 	try:
