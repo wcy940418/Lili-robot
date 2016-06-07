@@ -7,6 +7,7 @@
 import numpy as np
 import rospy as rp
 import time
+import os
 
 from scipy import interpolate
 from scipy.optimize import minimize
@@ -52,11 +53,12 @@ def result_callback(msg, (plans, actual, uncert)):
         path_uncert = np.array(uncert)
         rp.loginfo(error_calc(path_planned, path_actual, path_uncert))
 
-def data_log(plan, actual, uncert):
+def data_log(p, plan, actual, uncert):
     """Logs the data to .csv files
     """
     pass
 
+'''
 def error_calc(plan, actual, uncert):
     """Given a planned path `plan`, actual path `actual`, and uncertainty in
     path `uncert`, calculate the error.
@@ -92,6 +94,7 @@ def error_calc(plan, actual, uncert):
 
     n_points = actual.shape[0]
     return sse / n_points
+'''
 
 def uncolonify(s):
     """Replace the colons in `s` with `-`
@@ -105,10 +108,31 @@ def uncolonify(s):
 
     return new_s
 
+def init_data_directory(t):
+    """Given a string `t` representing the current time, initialize a directory
+    for data collection and return the path to that directory
+
+    Returns: {str} The path to the newly created directory
+    """
+    parent_path = os.path.abspath('../')
+    # NB: assume that this file lives in a child directory of 'lili_navi'
+    assert os.path.basename(parent_path) == 'lili_navi'
+
+    data_path = parent_path + 'data/'
+    if not os.path.exists(data_path):
+        os.mkdir(data_path)
+
+    curr_path = data_path + '%s/' % t
+    os.mkdir(curr_path)
+
+    return curr_path
+
 def main():
     start = time.asctime()
     start = '-'.join(start.split())
     start = uncolonify(start)
+
+    data_path = init_data_directory(start)
 
     rp.init_node("listener", anonymous=True)
 
