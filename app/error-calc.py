@@ -6,6 +6,7 @@
 
 import numpy as np
 import rospy as rp
+import time
 
 from scipy import interpolate
 from scipy.optimize import minimize
@@ -51,6 +52,11 @@ def result_callback(msg, (plans, actual, uncert)):
         path_uncert = np.array(uncert)
         rp.loginfo(error_calc(path_planned, path_actual, path_uncert))
 
+def data_log(plan, actual, uncert):
+    """Logs the data to .csv files
+    """
+    pass
+
 def error_calc(plan, actual, uncert):
     """Given a planned path `plan`, actual path `actual`, and uncertainty in
     path `uncert`, calculate the error.
@@ -87,8 +93,23 @@ def error_calc(plan, actual, uncert):
     n_points = actual.shape[0]
     return sse / n_points
 
+def uncolonify(s):
+    """Replace the colons in `s` with `-`
+    """
+    new_s = ''
+    for char in s:
+        if char == ':':
+            new_s += '-'
+        else:
+            new_s += char
+
+    return new_s
 
 def main():
+    start = time.asctime()
+    start = '-'.join(start.split())
+    start = uncolonify(start)
+
     rp.init_node("listener", anonymous=True)
 
     paths_planned = []
