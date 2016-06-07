@@ -9,8 +9,10 @@ import rospy as rp
 import time
 import os
 import itertools
+import rospkg
+import csv
 
-from collections import namedtuple
+# from collections import namedtuple
 from scipy import interpolate
 from scipy.optimize import minimize
 from nav_msgs.msg import Path
@@ -69,7 +71,7 @@ def data_log(p, plans, actual, uncert):
         elif data_type == 'actual':
             data = actual
 
-        filename = p + data_type + '.csv'
+        filename = p + '/' + data_type + '.csv'
         is_new_file = False
         if not os.path.exists(filename):
             f = open(filename, 'w+b')
@@ -140,15 +142,17 @@ def init_data_directory(t):
 
     Returns: {str} The path to the newly created directory
     """
-    parent_path = os.path.abspath('../')
+    rospack = rospkg.RosPack()
+    lili_path = rospack.get_path('lili_navi')
+    # lili_path = os.path.abspath('./src/lili_navi')
     # NB: assume that this file lives in a child directory of 'lili_navi'
-    assert os.path.basename(parent_path) == 'lili_navi'
+    assert os.path.basename(lili_path) == 'lili_navi', lili_path
 
-    data_path = parent_path + 'data/'
+    data_path = lili_path + '/data'
     if not os.path.exists(data_path):
         os.mkdir(data_path)
 
-    curr_path = data_path + '%s/' % t
+    curr_path = data_path + '/%s' % t
     os.mkdir(curr_path)
 
     return curr_path
