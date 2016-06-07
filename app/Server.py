@@ -375,14 +375,18 @@ def main():
 		print "IP: %s" % IP
 		print "Port: %s" % MAIN_SERVER_PORT
 		while True:
-			conn, addr = s.accept()
-			print 'Connected by:', addr
-			data = conn.recv(BUFFER_SIZE)
-			while data:
-				req = json.loads(data)
-				request_process(cfg, req)
+			try:
+				conn, addr = s.accept()
+				print 'Connected by:', addr
 				data = conn.recv(BUFFER_SIZE)
-			print "Client closed connection"
+				while data:
+					req = json.loads(data)
+					request_process(cfg, req)
+					data = conn.recv(BUFFER_SIZE)
+				print "Client closed connection"
+			except KeyboardInterrupt:
+				print "exiting..."
+				break
 
 if __name__ == '__main__':
 	main()

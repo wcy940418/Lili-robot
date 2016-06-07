@@ -132,6 +132,13 @@ def process_data(conn, c):
 
     	data = conn.recv(BUFFER_SIZE)
 
+def _enter(self):
+    return self
+
+def _exit(self, exception_type, exception_value, traceback):
+    self.shutdown(2)
+    self.close()
+
 def main():
     rp.init_node('tele_pos')
 
@@ -139,12 +146,14 @@ def main():
 
     with init_socket() as s:
         while not rp.is_shutdown():
-            try:
-                conn, addr = s.accept() # TODO: might need to close conn
-                process_data(conn, c)
+            try: 
+                conn, _ = s.accept() # TODO: might need to close conn
             except socket.error:
-                conn.close()
-                print "Disconnected"
+                continue
+            conn.__enter__ = _enter
+            conn.__exit__ = _exit
+            with conn:
+                process_data(conn, c)
 
 if __name__ == "__main__":
 	try:
