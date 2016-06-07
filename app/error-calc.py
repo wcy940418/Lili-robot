@@ -8,6 +8,7 @@ import numpy as np
 import rospy as rp
 
 from scipy import interpolate
+from scipy.optimize import minimize
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped as PWCS
 from move_base_msgs.msg import MoveBaseActionResult
@@ -41,7 +42,8 @@ def pose_callback(msg, (arr, uncert)):
 def result_callback(msg, (plans, actual, uncert)):
     """
     """
-    if msg.status.status == 3: # succeeded
+    success = msg.status.status == 3
+    if success:
         path_planned = np.array(plans[-1]) # get most recent plan
         path_actual = np.array(actual)
         path_uncert = np.array(uncert)
@@ -61,15 +63,22 @@ def error_calc(plan, actual, uncert):
     # TODO: how to handle uncertainty?
     xs = plan[:, 0]
     ys = plan[:, 1]
-    f = interpolate.interp1d(xs, ys)
 
-    sse = np.float64(0)
-    for x, y in actual:
-        # TODO: raises ValueError when x is out of bounds 
-        sq_err = (f(x) - y) ** 2 # TODO: what happens when x is not in the domain of f
-        sse += sq_err
+    # continuous and piecewise linear interpolation
+    # extrapolate to handle values of x outside of the domain of f
+    f = interpolate.interp1d(xs, ys, fill_value="extrapolate")
 
-    return sse / actual.shape[1]
+    sse = 0.0
+    for x_0, y_0 in actual:
+        sq_dist = lambda x: (x_0 - x) ** 2 + (y_0 - f(x)) ** 2
+        result = minimize(sq_dist, f(x_0))
+        if result.success:
+            sse += sq_dist(result.x[0]) # x should be 1x1 ndarray
+        else:
+            rp.logerr("Minimization failed; reason: %s" % result.message)
+
+    n_points = actual.shape[0]
+    return sse / n_points
 
 
 def main():
