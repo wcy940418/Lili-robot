@@ -66,8 +66,8 @@
         <remap from="/cmd_vel_mux/input/navi_cmd_vel" to="navi_cmd_vel"/>
         <remap from="/cmd_vel_mux/output/cmd_vel" to="cmd_vel"/>
     </node>
-    <!--error calculation node-->
-    <node pkg="lili_navi" type="error-calc.py" name="error_calc"/>
+    <!--data logging node-->
+    <node pkg="lili_navi" type="data-log.py" name="data_log"/>
     <!--global planner-->
     <node pkg="navfn" type="navfn_node" name="navfn"/>
 </launch>

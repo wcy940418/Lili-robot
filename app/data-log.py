@@ -8,7 +8,9 @@ import numpy as np
 import rospy as rp
 import time
 import os
+import itertools
 
+from collections import namedtuple
 from scipy import interpolate
 from scipy.optimize import minimize
 from nav_msgs.msg import Path
@@ -41,22 +43,46 @@ def pose_callback(msg, (arr, uncert)):
     # z = msg.pose.position.z
     arr.append([x, y]) # assume on 2D plane
 
-def result_callback(msg, (plans, actual, uncert)):
+def result_callback(msg, (p, plans, actual, uncert)):
+    """If goal is successfully reached, initalize data logging
     """
-    """
-    rp.loginfo(str(plans))
-    rp.loginfo(str(actual))
+    # rp.loginfo(str(plans))
+    # rp.loginfo(str(actual))
     success = msg.status.status == 3
     if success:
-        path_planned = np.array(plans[-1]) # get most recent plan
-        path_actual = np.array(actual)
-        path_uncert = np.array(uncert)
-        rp.loginfo(error_calc(path_planned, path_actual, path_uncert))
+        data_log(p, plans, actual, uncert)
+        # path_planned = np.array(plans[-1]) # get most recent plan
+        # path_actual = np.array(actual)
+        # path_uncert = np.array(uncert)
+        # rp.loginfo(error_calc(path_planned, path_actual, path_uncert))
 
-def data_log(p, plan, actual, uncert):
+def data_log(p, plans, actual, uncert):
     """Logs the data to .csv files
     """
-    pass
+    # TODO: Need to handle uncertainty
+    data_types = ['plan', 'actual']
+    field_names = ['x', 'y']
+
+    for data_type in data_types:
+        if data_type == 'plan':
+            data = itertools.chain.from_iterable(plans)
+        elif data_type == 'actual':
+            data = actual
+
+        filename = p + data_type + '.csv'
+        is_new_file = False
+        if not os.path.exists(filename):
+            f = open(filename, 'w+b')
+            is_new_file = True
+        else:
+            f = open(filename, 'a+b')
+
+        with f:
+            writer = csv.DictWriter(f, fieldnames=field_names)
+            if is_new_file:
+                writer.writeheader()
+            for x, y in data:
+                writer.writerow({'x': x, 'y': y})
 
 '''
 def error_calc(plan, actual, uncert):
@@ -151,7 +177,7 @@ def main():
     rp.Subscriber("/move_base/result",
                   data_class=MoveBaseActionResult,
                   callback=result_callback,
-                  callback_args=(paths_planned, path_actual, path_uncert))
+                  callback_args=(data_path, paths_planned, path_actual, path_uncert))
 
     rp.spin()
 
