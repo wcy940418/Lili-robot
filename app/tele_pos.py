@@ -101,50 +101,50 @@ def process_data(conn, c):
     """Processes incoming data from socket `conn` and performs the corresponding
     action using the attributes from container `c`
     """
-	data = conn.recv(BUFFER_SIZE)
-	while data:
-		data = json.loads(data)
+    data = conn.recv(BUFFER_SIZE)
+    while data:
+    	data = json.loads(data)
 
-		if data['name'] == 'goal_map':
-			message = PoseStamped()
-			create_pose_msg(data, c.seq_goal, message)
-			message.header.frame_id = 'map'
-			c.pub_goal.publish(message)
-			c.seq_goal += 1
-		elif data['name'] == 'initial':
-			message = PoseWithCovarianceStamped()
-			create_pose_msg(data, c.seq_initial, message)
-			message.header.frame_id = 'map'
-			message.pose.covariance = FIXED_COVARIANCE
-			c.pub_initial.publish(message)
-			c.seq_initial += 1
-		elif data['name'] == 'get_pose':
-			pose = read_recent_pose(c.listener_pose)
-			conn.sendall(pose)
-		elif data['name'] == 'goal_robot':
-			message = PoseStamped()
-			create_pose_msg(data, c.seq_goal, message)
-			message.header.frame_id = 'base_link'
-			c.pub_goal.publish(message)
-			c.seq_goal += 1
-		elif data['name'] == 'cancel':
-			c.pub_cancel.publish(GoalID())
+    	if data['name'] == 'goal_map':
+    		message = PoseStamped()
+    		create_pose_msg(data, c.seq_goal, message)
+    		message.header.frame_id = 'map'
+    		c.pub_goal.publish(message)
+    		c.seq_goal += 1
+    	elif data['name'] == 'initial':
+    		message = PoseWithCovarianceStamped()
+    		create_pose_msg(data, c.seq_initial, message)
+    		message.header.frame_id = 'map'
+    		message.pose.covariance = FIXED_COVARIANCE
+    		c.pub_initial.publish(message)
+    		c.seq_initial += 1
+    	elif data['name'] == 'get_pose':
+    		pose = read_recent_pose(c.listener_pose)
+    		conn.sendall(pose)
+    	elif data['name'] == 'goal_robot':
+    		message = PoseStamped()
+    		create_pose_msg(data, c.seq_goal, message)
+    		message.header.frame_id = 'base_link'
+    		c.pub_goal.publish(message)
+    		c.seq_goal += 1
+    	elif data['name'] == 'cancel':
+    		c.pub_cancel.publish(GoalID())
 
-		data = conn.recv(BUFFER_SIZE)
+    	data = conn.recv(BUFFER_SIZE)
 
 def main():
-	rp.init_node('tele_pos')
+    rp.init_node('tele_pos')
 
     c = Container()
 
-	with init_socket() as s:
-		while not rp.is_shutdown():
+    with init_socket() as s:
+        while not rp.is_shutdown():
             try:
                 conn, addr = s.accept() # TODO: might need to close conn
                 process_data(conn, c)
             except socket.error:
                 conn.close()
-    			print "Disconnected"
+                print "Disconnected"
 
 if __name__ == "__main__":
 	try:
