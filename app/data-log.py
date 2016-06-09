@@ -6,6 +6,7 @@
 
 import numpy as np
 import rospy as rp
+import tf
 import time
 import os
 import itertools
@@ -13,22 +14,27 @@ import rospkg
 import csv
 
 # from collections import namedtuple
+from tf import transformations as trans
 from scipy import interpolate
 from scipy.optimize import minimize
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseWithCovarianceStamped as PWCS
 from move_base_msgs.msg import MoveBaseActionResult
 
-def plan_callback(msg, arr):
+def plan_callback(msg, (l, arr)):
     """Records the plans created by global_planner in a list
 
     Parameters:
     msg {Path} The heard message
+    l {TransformListener} The transform listener
     arr {list} List to store plans
     """
+    # transform poses from local frame to global frame
+    transformed_poses = [l.transformPose('/map', pose_stamped) for pose_stamped in msg.poses]
+    
     x = lambda pose_stamped: pose_stamped.pose.position.x
     y = lambda pose_stamped: pose_stamped.pose.position.y
-    pos_data = [[x(pose_stamped), y(pose_stamped)] for pose_stamped in msg.poses]
+    pos_data = [[x(pose_stamped), y(pose_stamped)] for pose_stamped in transformed_poses]
     arr.append(pos_data)
 
 def pose_callback(msg, (arr, uncert)):
@@ -47,6 +53,12 @@ def pose_callback(msg, (arr, uncert)):
 
 def result_callback(msg, (p, plans, actual, uncert)):
     """If goal is successfully reached, initalize data logging
+
+    Parameters:
+    p {str} The path to the data directory
+    plans {list} A list of lists containing all the published local plans 
+    actual {list} A list containing the pose estimates 
+    uncert {list} A list containing the uncertainty in pose estimates
     """
     # rp.loginfo(str(plans))
     # rp.loginfo(str(actual))
@@ -169,11 +181,13 @@ def main():
     paths_planned = []
     path_actual = []
     path_uncert = []
+    
+    l = tf.TransformListener()
 
     rp.Subscriber("/move_base/DWAPlannerROS/local_plan",
                   data_class=Path,
                   callback=plan_callback,
-                  callback_args=paths_planned)
+                  callback_args=(l, paths_planned))
     rp.Subscriber("/amcl_pose",
                   data_class=PWCS,
                   callback=pose_callback,
