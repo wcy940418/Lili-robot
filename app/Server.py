@@ -137,7 +137,9 @@ def stop_amcl(cfg):
     """
     if cfg.amcl_process:
         try:
-            os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
+            cfg.amcl_process.terminate()
+            cfg.amcl_process.wait()
+            # os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
         except OSError:
             # TODO: more helpful message
             print "Unable to stop AMCL"
