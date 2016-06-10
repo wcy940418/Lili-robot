@@ -153,4 +153,7 @@ def main():
     rp.spin()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except rp.ROSInterruptException:
+        pass
