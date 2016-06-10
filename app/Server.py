@@ -137,11 +137,14 @@ def stop_amcl(cfg):
     """
     if cfg.amcl_process:
         try:
-            cfg.amcl_process.terminate()
-            cfg.amcl_process.wait()
+            returncode = subprocess.call("rosnode kill /amcl".split())
+            assert returncode == 0
+            # cfg.amcl_process.terminate()
+            # cfg.amcl_process.wait()
             # os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
-        except OSError:
+        except OSError as e:
             # TODO: more helpful message
+            print str(e)
             print "Unable to stop AMCL"
             return False
         cfg.amcl_process = None
