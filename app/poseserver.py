@@ -57,18 +57,26 @@ class PoseServer(object):
         else:
             raise PoseError("%s is not in database" % name)
 
+    # TODO: ???
     def find(self, _name, _label):
         if _name in self._dict:
             return self._dict[_name][_label]
         else :
             raise PoseError("%s is not in database" % _name)
-    def delete(self,_name):
-        if _name in self._dict:
-            self._dict.pop(_name)
+
+    def delete(self, name):
+        """Given the name of a pose `name`, delete its entry in the dict
+        """
+        if name in self._dict:
+            self._dict.pop(name)
         else:
             raise PoseError("%s is not in database" % _name)
-    def revise(self, _name, _label, _data):
-        if _name in self._dict:
-            self._dict[_name][_label] = _data
+
+    # TODO: ???
+    def revise(self, name, label, data):
+        """
+        """
+        if name in self._dict:
+            self._dict[name][label] = data
         else:
             raise PoseError("%s is not in database" % _name)
