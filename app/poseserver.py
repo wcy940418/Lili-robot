@@ -15,11 +15,10 @@ class PoseServer(object):
         with open(s, 'r') as f:
             self._dict = json.load(self._f)
 
-    def create(self, _s):
-        self._f = open(_s, 'w')
-        dic = {}
-        json.dump(dic, self._f)
-        self._f.close()
+    def create(self, s):
+        with open(s, 'w') as f:
+            json.dump({}, f)
+
     def save(self):
         if self._isLoaded:
             self._f = open(self._loaded_file, 'w')
