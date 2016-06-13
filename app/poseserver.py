@@ -9,6 +9,10 @@ class PoseServer(object):
         self._dict = {}
         self._filename = None
 
+    @property
+    def dict(self):
+        return self._dict
+
     def load(self, s):
         """Given the filename of a json file `s`, load the data into a dict
         """
@@ -34,17 +38,16 @@ class PoseServer(object):
             raise PoseError("Please load map first")
 
     def append(self, name, data):
-        if self._isLoaded:
-            self._dict[_name] = _data
-            print self._loaded_file
-            self._f = open(self._loaded_file, 'w')
-            print self._dict
-            json.dump(self._dict, self._f)
-            self._f.close()
+        """Given the name of a pose `name` and the pose data `data`, save the
+        information into the loaded json file
+        """
+        if self._filename:
+            self._dict[name] = data
+            with open(self._filename, 'w') as f:
+                json.dump(self._dict, f)
         else:
             raise PoseError("Please load map first")
-    def fetchall(self):
-        return self._dict
+
     def findall(self, _name):
         if _name in self._dict:
             return self._dict[_name]
