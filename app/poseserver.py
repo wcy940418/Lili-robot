@@ -5,14 +5,16 @@ class PoseError(StandardError):
 
 class PoseServer(object):
     def __init__(self):
-        self._isLoaded = False
+        # self._isLoaded = False
         self._dict = {}
-    def load(self, _s):
-        self._loaded_file = _s
-        self._isLoaded = True
-        self._f = open(_s, 'r')
-        self._dict = json.load(self._f)
-        self._f.close()
+        self._filename = None
+
+    def load(self, s):
+        self._filename = s
+        # self._isLoaded = True
+        with open(s, 'r') as f:
+            self._dict = json.load(self._f)
+
     def create(self, _s):
         self._f = open(_s, 'w')
         dic = {}
