@@ -48,11 +48,15 @@ class PoseServer(object):
         else:
             raise PoseError("Please load map first")
 
-    def findall(self, _name):
-        if _name in self._dict:
-            return self._dict[_name]
+    def findall(self, name):
+        """Given the name of a pose `name`, check whether it exists in the dict.
+        Return the value if it does, raise an error otherwise
+        """
+        if name in self._dict:
+            return self._dict[name]
         else:
-            raise PoseError("%s is not in database" % _name)
+            raise PoseError("%s is not in database" % name)
+
     def find(self, _name, _label):
         if _name in self._dict:
             return self._dict[_name][_label]
