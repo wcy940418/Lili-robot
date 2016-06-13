@@ -20,12 +20,12 @@ class PoseServer(object):
             json.dump({}, f)
 
     def save(self):
-        if self._isLoaded:
-            self._f = open(self._loaded_file, 'w')
-            json.dump(self._dict, self._f)
-            self._f.close()
+        if self._filename:
+            with open(self._filename, 'w') as f:
+                json.dump(self._dict, f)
         else:
             raise PoseError("Please load map first")
+
     def append(self, _name, _data):
         if self._isLoaded:
             self._dict[_name] = _data
