@@ -13,6 +13,10 @@ class PoseServer(object):
     def dict(self):
         return self._dict
 
+    @property
+    def filename(self):
+        return self._filename 
+
     def load(self, s):
         """Given the filename of a json file `s`, load the data into a dict
         """
