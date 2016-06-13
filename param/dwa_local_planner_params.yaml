@@ -31,8 +31,8 @@ DWAPlannerROS:
   # latch_xy_goal_tolerance: false
 
 # Forward Simulation Parameters
-  sim_time: 1.7        # 1.7
-  vx_samples: 7      # 6
+  sim_time: 1.7       # 1.7
+  vx_samples: 15      # 7
   vy_samples: 1       # diff drive robot, there is only one sample
   vtheta_samples: 20  # 20
 
