@@ -10,23 +10,30 @@ class PoseServer(object):
         self._filename = None
 
     def load(self, s):
+        """Given the filename of a json file `s`, load the data into a dict
+        """
         self._filename = s
         # self._isLoaded = True
         with open(s, 'r') as f:
-            self._dict = json.load(self._f)
+            self._dict = json.load(f)
 
     def create(self, s):
+        """Given the filename of a json file `s`, create an empty json file with
+        name `s`
+        """
         with open(s, 'w') as f:
             json.dump({}, f)
 
     def save(self):
+        """Saves the current dict to the loaded file
+        """
         if self._filename:
             with open(self._filename, 'w') as f:
                 json.dump(self._dict, f)
         else:
             raise PoseError("Please load map first")
 
-    def append(self, _name, _data):
+    def append(self, name, data):
         if self._isLoaded:
             self._dict[_name] = _data
             print self._loaded_file
