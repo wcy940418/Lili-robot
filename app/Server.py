@@ -55,9 +55,9 @@ def start_slam(cfg):
         return False
 
     try:
-        cfg.slam_process = subprocess.Popen(SLAM_CMD,
+        args = SLAM_CMD.split()
+        cfg.slam_process = subprocess.Popen(args,
                                             stdout=subprocess.PIPE,
-                                            shell=True,
                                             preexec_fn=os.setsid)
     except OSError:
         # TODO: print helpful message
@@ -74,7 +74,8 @@ def stop_slam(cfg):
     """
     if cfg.slam_process:
         try:
-            os.killpg(os.getpgid(cfg.slam_process.pid), signal.SIGTERM)
+            cfg.slam_process.terminate()
+            cfg.slam_process.communicate()
         except OSError:
             # TODO: print more helpful message
             print "Unable to stop SLAM"
@@ -114,11 +115,16 @@ def start_amcl(cfg, map_name):
 
     # TODO: handle exceptions?
     try:
-        cfg.amcl_process = subprocess.Popen(
-            AMCL_CMD + cfg.map_mgr.loadmap4mapserver(map_name),
-            stdout=subprocess.PIPE,
-            shell=True,
-            preexec_fn=os.setsid)
+        args = AMCL_CMD + cfg.map_mgr.loadmap4mapserver(map_name)
+        args = args.split()
+        cfg.amcl_process = subprocess.Popen(args,
+                                            stdout=subprocess.PIPE,
+                                            preexec_fn=os.setsid)
+        # cfg.amcl_process = subprocess.Popen(
+        #     AMCL_CMD + cfg.map_mgr.loadmap4mapserver(map_name),
+        #     stdout=subprocess.PIPE,
+        #     shell=True,
+        #     preexec_fn=os.setsid)
     except OSError:
         # TODO: more helpful message
         print "Unable to start AMCL"
@@ -137,11 +143,8 @@ def stop_amcl(cfg):
     """
     if cfg.amcl_process:
         try:
-            returncode = subprocess.call("rosnode kill /amcl".split())
-            assert returncode == 0
-            # cfg.amcl_process.terminate()
-            # cfg.amcl_process.wait()
-            # os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
+            cfg.amcl_process.terminate()
+            cfg.amcl_process.communicate()
         except OSError as e:
             # TODO: more helpful message
             print str(e)
