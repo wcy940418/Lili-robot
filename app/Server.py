@@ -156,8 +156,8 @@ def stop_amcl(cfg):
     return False
 
 def move(cfg, data):
-    """Given coordinate data `data`, send a move command to the pose server with
-    these coordinates
+    """Given coordinate data `data` in the robot's frame, send a move command to
+     the pose server with these coordinates
 
     Returns: {bool} True if successful, False otherwise
     """
@@ -177,7 +177,8 @@ def move(cfg, data):
         return False
 
 def set_goal_raw(cfg, data):
-    """Given goal pose data `data`, send it to the pose service
+    """Given goal pose data `data` in the global frame, send it to the pose
+    service
 
     Returns: {bool} True if successful, False otherwise
     """
@@ -229,7 +230,8 @@ def stop_navi(cfg):
     return False
 
 def set_initial_pose_raw(cfg, data):
-    """Given raw coordinate data `data`, send it to the pose service
+    """Given raw coordinate data `data` in the global frame, send it to the pose
+    service
 
     Returns: {bool} True if successful, False otherwise
     """
@@ -264,7 +266,7 @@ def set_initial_pose(cfg, name):
     return False
 
 def read_recent_pose(cfg, verbose=True):
-    """Get the most recent pose from the pose service
+    """Get the most recent pose in the global frame from the pose service
 
     Returns: {dict} Pose data if successful, empty dictionary otherwise
     """
