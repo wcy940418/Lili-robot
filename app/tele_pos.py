@@ -66,7 +66,7 @@ def create_pose_msg(d, seq, m):
     m.header.stamp = rp.Time.now() - rp.Duration(5)
     m.pose.position.x = d['x']
     m.pose.position.y = d['y']
-    m.pose.position.z = d['z']
+    # m.pose.position.z = d['z']
     m.pose.orientation.x = 0.0
     m.pose.orientation.y = 0.0
     m.pose.orientation.z = dic['z']
@@ -89,12 +89,12 @@ def read_recent_pose(l):
         print "Unable to get robot pose"
         return ""
 
-    yaw = quaternion2rpy(rotation[3], rotation[0], rotation[1], rotation[2])
+    rot = quaternion2rpy(rotation[3], rotation[0], rotation[1], rotation[2])
     data = dict(name='robot_pose',
                 x=translation[0],
                 y=translation[1],
                 z=translation[2],
-                yaw=yaw)
+                yaw=rot['yaw'])
     return json.dumps(data)
 
 def process_data(conn, c):

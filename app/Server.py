@@ -55,9 +55,9 @@ def start_slam(cfg):
         return False
 
     try:
-        cfg.slam_process = subprocess.Popen(SLAM_CMD,
+        args = SLAM_CMD.split()
+        cfg.slam_process = subprocess.Popen(args,
                                             stdout=subprocess.PIPE,
-                                            shell=True,
                                             preexec_fn=os.setsid)
     except OSError:
         # TODO: print helpful message
@@ -74,7 +74,8 @@ def stop_slam(cfg):
     """
     if cfg.slam_process:
         try:
-            os.killpg(os.getpgid(cfg.slam_process.pid), signal.SIGTERM)
+            cfg.slam_process.terminate()
+            cfg.slam_process.communicate()
         except OSError:
             # TODO: print more helpful message
             print "Unable to stop SLAM"
@@ -114,11 +115,16 @@ def start_amcl(cfg, map_name):
 
     # TODO: handle exceptions?
     try:
-        cfg.amcl_process = subprocess.Popen(
-            AMCL_CMD + cfg.map_mgr.loadmap4mapserver(map_name),
-            stdout=subprocess.PIPE,
-            shell=True,
-            preexec_fn=os.setsid)
+        args = AMCL_CMD + cfg.map_mgr.loadmap4mapserver(map_name)
+        args = args.split()
+        cfg.amcl_process = subprocess.Popen(args,
+                                            stdout=subprocess.PIPE,
+                                            preexec_fn=os.setsid)
+        # cfg.amcl_process = subprocess.Popen(
+        #     AMCL_CMD + cfg.map_mgr.loadmap4mapserver(map_name),
+        #     stdout=subprocess.PIPE,
+        #     shell=True,
+        #     preexec_fn=os.setsid)
     except OSError:
         # TODO: more helpful message
         print "Unable to start AMCL"
@@ -126,7 +132,7 @@ def start_amcl(cfg, map_name):
     except MapError as e:
         print str(e)
         return False
-    cfg.pose_svr.load(cfg.map_mgr.getmappath(map_name) + '.txt')
+    cfg.pose_svr.load(cfg.map_mgr.getmappath(map_name) + '.json')
     print "Navigation (AMCL) started"
     return True
 
@@ -137,11 +143,8 @@ def stop_amcl(cfg):
     """
     if cfg.amcl_process:
         try:
-            returncode = subprocess.call("rosnode kill /amcl".split())
-            assert returncode == 0
-            # cfg.amcl_process.terminate()
-            # cfg.amcl_process.wait()
-            # os.killpg(os.getpgid(cfg.amcl_process.pid), signal.SIGTERM)
+            cfg.amcl_process.terminate()
+            cfg.amcl_process.communicate()
         except OSError as e:
             # TODO: more helpful message
             print str(e)
@@ -185,7 +188,7 @@ def set_goal_raw(cfg, data):
     if cfg.amcl_process:
         with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, POSE_SERVICE_PORT)) # TODO: can this fail?
-            data['name'] = 'goal'
+            data['name'] = 'goal_map'
             pose = json.dumps(data)
             s.sendall(pose)
         return True
@@ -274,7 +277,7 @@ def read_recent_pose(cfg, verbose=True):
         with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, POSE_SERVICE_PORT))
             s.sendall( json.dumps({'name':'get_pose'}) )
-            data = s.recv(BUFFER_SIZE)
+            data = json.loads(s.recv(BUFFER_SIZE))
 
         if not data:
             print "Unable to get pose"
@@ -284,8 +287,9 @@ def read_recent_pose(cfg, verbose=True):
             data.pop('name')
             if verbose:
                 print "Most recent pose:"
+                # print data 
                 for k, v in data.iteritems():
-                    print "%3s: %.4f" % (k, v)
+                    print "%3s: %.4f" % (str(k), v)
             return data
         else:
             print "Data received is not of name \"robot_pose\""
@@ -301,7 +305,7 @@ def record_pose(cfg, name):
     Returns: {bool} True if successful, False otherwise
     """
     if cfg.slam_process or cfg.amcl_process:
-        pose = json.dumps(read_recent_pose(cfg, verbose=False))
+        pose = read_recent_pose(cfg, verbose=False)
         cfg.pose_svr.append(name, pose)
         print "Recorded pose:"
         for k, v in pose.iteritems():
@@ -319,8 +323,8 @@ def request_process(cfg, request):
         if start_slam(cfg):
             map_name = request['data']
             cfg.map = cfg.map_mgr.buildnewmap(map_name)
-            cfg.pose_svr.create(map_name + '.txt')
-            cfg.pose_svr.load(map_name + '.txt')
+            cfg.pose_svr.create(map_name + '.json')
+            cfg.pose_svr.load(map_name + '.json')
     elif request['cmd'] == 'stop_slam':
         map_name = request['data']
         if map_name:

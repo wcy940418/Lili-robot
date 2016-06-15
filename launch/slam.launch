@@ -10,7 +10,7 @@
         <param name="port" value="$(arg lidar_port)"/>
     </node>
     <!--Tele pose Node-->
-    <node pkg="lili_navi" type="tele_pos.py" name="tele_pos" respawn="true"/>
+    <node pkg="lili_navi" type="tele_pos.py" name="tele_pos"/>
     <!--GMapping Node-->
     <include file="$(find lili_navi)/app/gmapping.launch"/>
     <!--Create Robot Node-->
@@ -25,6 +25,7 @@
     <!--LIDAR static tf-->
     <node pkg="tf" type="static_transform_publisher" name="base_to_laser_tf" args="0 0 0 0 0 0 base_link laser_scan 100" />
     <!--Teleop Node-->
+    <!--
     <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_joy">
         <param name="enable_turbo_button" value="1"/>
         <param name="scale_linear_turbo" value="0.5"/>
@@ -35,6 +36,8 @@
         <param name="dev" value="$(arg joy_port)"/>
         <param name="autorepeat_rate" value="2"/>
     </node>
+-->
+    <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_keyboard"/>
     <!--robot_pose_ekf Node-->
     <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
         <param name="output_frame" value="odom"/>

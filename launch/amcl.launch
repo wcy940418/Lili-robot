@@ -16,6 +16,7 @@
     <!--Tele pose Node-->
     <node pkg="lili_navi" type="tele_pos.py" name="tele_pos" respawn="true"/>
     <!--Teleop Node-->
+    <!--
     <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_joy">
         <param name="enable_turbo_button" value="1"/>
         <param name="scale_linear_turbo" value="0.5"/>
@@ -27,6 +28,8 @@
         <param name="dev" value="$(arg joy_port)"/>
         <param name="autorepeat_rate" value="1"/>
     </node>
+    -->
+    <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_keyboard"/>
     <!--Footprint Mask tf-->
     <node pkg="tf" type="static_transform_publisher" name="base_mask_tf" args="0 0 0 0 0 0 base_footprint base_link 100" />
     <!--XV-11 LIDAR static tf-->
