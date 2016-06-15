@@ -37,7 +37,7 @@ if __name__ == "__main__":
 	try:
 		seq = 0
 		message_init()
-		rate = rospy.Rate(20)
+		rate = rospy.Rate(0.33)
 		while not rospy.is_shutdown():
 			distance = rospy.get_param('~distance')
 			send_fake_scan(distance)
