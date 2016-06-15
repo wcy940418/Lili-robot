@@ -12,9 +12,9 @@
     <!--Tele pose Node-->
     <node pkg="lili_navi" type="tele_pos.py" name="tele_pos"/>
     <!--GMapping Node-->
-    <include file="$(find lili_navi)/app/gmapping.launch"/>
+    <include file="$(find lili_navi)/launch/gmapping.launch"/>
     <!--Create Robot Node-->
-    <include file="$(find lili_navi)/app/robot.launch">
+    <include file="$(find lili_navi)/launch/robot.launch">
         <arg name="serialport" value="$(arg robot_port)"/>
         <arg name="robot_type" value="create"/>
     </include>
