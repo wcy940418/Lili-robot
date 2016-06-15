@@ -48,18 +48,18 @@
     <!-- Map server Node-->
     <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
     <!--AMCL Node-->
-    <include file="./amcl.launch">
+    <include file="$(find lili_navi)/launch/amcl.launch">
         <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
         <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
         <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
     </include>
     <!--Create Robot Node-->
-    <include file="./robot.launch">
+    <include file="$(find lili_navi)/launch/robot.launch">
         <arg name="serialport" value="$(arg robot_port)"/>
         <arg name="robot_type" value="create"/>
     <!--move_base Node-->
     </include>
-        <include file="./move_base.launch">
+        <include file="$(find lili_navi/launch/move_base.launch">
     </include>
     <!--cmd_vel_mux Node-->
     <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
