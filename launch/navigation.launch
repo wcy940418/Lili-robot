@@ -1,11 +1,11 @@
 <launch>
     <!--Parameters-->
-    <arg name="lidar_port" default="/dev/ttyUSB1"/>
-    <arg name="robot_port" default="/dev/ttyUSB0"/>
+    <arg name="lidar_port" default="/dev/ttyUSB0"/>
+    <arg name="robot_port" default="/dev/ttyUSB1"/>
     <arg name="joy_port" default="/dev/input/js1"/>
     <arg name="map_file" default="~/map.yaml"/>
-    <arg name="initial_pose_x" default="0.0"/> 
-    <arg name="initial_pose_y" default="0.0"/> 
+    <arg name="initial_pose_x" default="0.0"/>
+    <arg name="initial_pose_y" default="0.0"/>
     <arg name="initial_pose_a" default="0.0"/>
     <!--XV-11 LIDAR Node-->
     <node pkg="xv_11_laser_driver" type="neato_laser_publisher" name="xv_11_lidar">
@@ -16,6 +16,7 @@
     <!--Tele pose Node-->
     <node pkg="lili_navi" type="tele_pos.py" name="tele_pos" respawn="true"/>
     <!--Teleop Node-->
+    <!--
     <node pkg="teleop_twist_joy" type="teleop_node" name="teleop_joy">
         <param name="enable_turbo_button" value="1"/>
         <param name="scale_linear_turbo" value="0.5"/>
@@ -25,10 +26,13 @@
     </node>
     <node pkg="joy" type="joy_node" name="ms_joy1">
         <param name="dev" value="$(arg joy_port)"/>
+        <param name="autorepeat_rate" value="1"/>
     </node>
+    -->
+    <node pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" name="teleop_keyboard"/>
     <!--Footprint Mask tf-->
     <node pkg="tf" type="static_transform_publisher" name="base_mask_tf" args="0 0 0 0 0 0 base_footprint base_link 100" />
-    <!--LIDAR static tf-->
+    <!--XV-11 LIDAR static tf-->
     <node pkg="tf" type="static_transform_publisher" name="base_to_laser_tf" args="0 0 0 0 0 0 base_link laser_scan 100" />
     <!--robot_pose_ekf Node-->
     <node pkg="robot_pose_ekf" type="robot_pose_ekf" name="robot_pose_ekf">
@@ -44,18 +48,18 @@
     <!-- Map server Node-->
     <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
     <!--AMCL Node-->
-    <include file="$(find lili_navi)/app/amcl.launch.xml">
+    <include file="./amcl.launch">
         <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
         <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
         <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
     </include>
     <!--Create Robot Node-->
-    <include file="$(find lili_navi)/app/robot.launch">
+    <include file="./robot.launch">
         <arg name="serialport" value="$(arg robot_port)"/>
-        <arg name="robot_type" value="roomba"/>
+        <arg name="robot_type" value="create"/>
     <!--move_base Node-->
     </include>
-        <include file="$(find lili_navi)/app/move_base_lite.launch.xml">
+        <include file="./move_base.launch">
     </include>
     <!--cmd_vel_mux Node-->
     <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
@@ -65,4 +69,8 @@
         <remap from="/cmd_vel_mux/input/navi_cmd_vel" to="navi_cmd_vel"/>
         <remap from="/cmd_vel_mux/output/cmd_vel" to="cmd_vel"/>
     </node>
+    <!--data logging node-->
+    <node pkg="lili_navi" type="data-log.py" name="data_log"/>
+    <!--global planner-->
+    <node pkg="navfn" type="navfn_node" name="navfn"/>
 </launch>

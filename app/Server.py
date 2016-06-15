@@ -28,7 +28,7 @@ POSE_SERVICE_PORT = 5555
 MAIN_SERVER_PORT = 10010
 SLAM_CMD = 'roslaunch lili_navi slam.launch'
 MAP_SAVER_CMD = 'rosrun map_server map_saver -f '
-AMCL_CMD = 'roslaunch lili_navi amcl.launch map_file:='
+AMCL_CMD = 'roslaunch lili_navi navigation.launch map_file:='
 BUFFER_SIZE = 1024
 
 class Config:
