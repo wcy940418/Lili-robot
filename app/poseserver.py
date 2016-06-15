@@ -37,7 +37,8 @@ class PoseServer(object):
         """
         if self._filename:
             with open(self._filename, 'w') as f:
-                json.dump(self._dict, f)
+                json.dump(self._dict, f, sort_keys=True, indent=4,
+                          separators=(',', ': '))
         else:
             raise PoseError("Please load map first")
 
@@ -46,11 +47,11 @@ class PoseServer(object):
         information into the loaded json file
         """
         if self._filename:
-            self._dict[name] = data
-            with open(self._filename, 'w') as f:
-                json.dump(self._dict, f)
-        else:
-            raise PoseError("Please load map first")
+            if name not in self._dict:
+                self._dict[name] = data
+                self.save()
+            else:
+                raise PoseError("Key %s already exists" % name)
 
     def findall(self, name):
         """Given the name of a pose `name`, check whether it exists in the dict.
@@ -73,6 +74,7 @@ class PoseServer(object):
         """
         if name in self._dict:
             self._dict.pop(name)
+            self.save()
         else:
             raise PoseError("%s is not in database" % _name)
 
