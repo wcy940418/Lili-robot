@@ -132,7 +132,7 @@ def start_amcl(cfg, map_name):
     except MapError as e:
         print str(e)
         return False
-    cfg.pose_svr.load(cfg.map_mgr.getmappath(map_name) + '.txt')
+    cfg.pose_svr.load(cfg.map_mgr.getmappath(map_name) + '.json')
     print "Navigation (AMCL) started"
     return True
 
@@ -187,7 +187,7 @@ def set_goal_raw(cfg, data):
     if cfg.amcl_process:
         with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, POSE_SERVICE_PORT)) # TODO: can this fail?
-            data['name'] = 'goal'
+            data['name'] = 'goal_map'
             pose = json.dumps(data)
             s.sendall(pose)
         return True
@@ -275,7 +275,7 @@ def read_recent_pose(cfg, verbose=True):
         with LiliSocket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.connect((HOST, POSE_SERVICE_PORT))
             s.sendall( json.dumps({'name':'get_pose'}) )
-            data = s.recv(BUFFER_SIZE)
+            data = json.loads(s.recv(BUFFER_SIZE))
 
         if not data:
             print "Unable to get pose"
@@ -285,8 +285,9 @@ def read_recent_pose(cfg, verbose=True):
             data.pop('name')
             if verbose:
                 print "Most recent pose:"
+                # print data 
                 for k, v in data.iteritems():
-                    print "%3s: %.4f" % (k, v)
+                    print "%3s: %.4f" % (str(k), v)
             return data
         else:
             print "Data received is not of name \"robot_pose\""
@@ -302,7 +303,7 @@ def record_pose(cfg, name):
     Returns: {bool} True if successful, False otherwise
     """
     if cfg.slam_process or cfg.amcl_process:
-        pose = json.dumps(read_recent_pose(cfg, verbose=False))
+        pose = read_recent_pose(cfg, verbose=False)
         cfg.pose_svr.append(name, pose)
         print "Recorded pose:"
         for k, v in pose.iteritems():
@@ -320,8 +321,8 @@ def request_process(cfg, request):
         if start_slam(cfg):
             map_name = request['data']
             cfg.map = cfg.map_mgr.buildnewmap(map_name)
-            cfg.pose_svr.create(map_name + '.txt')
-            cfg.pose_svr.load(map_name + '.txt')
+            cfg.pose_svr.create(map_name + '.json')
+            cfg.pose_svr.load(map_name + '.json')
     elif request['cmd'] == 'stop_slam':
         map_name = request['data']
         if map_name:
